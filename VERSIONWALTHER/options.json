@@ -2,6 +2,6 @@
   "options": {
     "sound_enabled": true,
     "volume": 0.7,
-    "difficulty": "Easy"
+    "difficulty": "Hard"
   }
 }
