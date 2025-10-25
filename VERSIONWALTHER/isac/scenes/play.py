@@ -53,7 +53,15 @@ from isac.entities.health_doubler import HealthDoubler
 class PlayScene(Scene):
     def __init__(self, game: "Game") -> None:
         super().__init__(game)
-        self.player = Player(WIDTH // 2, HEIGHT // 2)
+        # Initialize dungeon first
+        self.dungeon = Dungeon()
+        
+        # Get current room and find a valid spawn position
+        current_room = self.dungeon.get_room()
+        spawn_x, spawn_y = self._calculate_spawn_position(current_room)
+        
+        # Create player at the valid spawn position
+        self.player = Player(spawn_x, spawn_y)
         self.enemies: list[Enemy] = []
         self.font = pygame.font.SysFont(None, 24)
         self.big_font = pygame.font.SysFont(None, 32)
@@ -64,7 +72,6 @@ class PlayScene(Scene):
             Pickup('magic', WIDTH * 2 // 3, HEIGHT // 3),
             Pickup('arrow', WIDTH // 2, HEIGHT * 2 // 3),
         ]
-        self.dungeon = Dungeon()
         self.paused = False
         self.pause_options = ["Continuar", "Guardar", "Salir al menú"]
         self.pause_index = 0
@@ -157,6 +164,9 @@ class PlayScene(Scene):
         # Cooldown para no reentrar puerta inmediatamente tras mover de sala
         self._door_cooldown: float = 0.0
 
+        # Sistema de puntuación
+        self.score: int = 0
+
         # Flashes de muerte de enemigos (lista de tuplas: (rect, tiempo_restante))
         self.kill_flashes: list[tuple[pygame.Rect, float]] = []
 
@@ -230,12 +240,53 @@ class PlayScene(Scene):
                     chest = Chest(chest_x, chest_y)
                     room.chests.append(chest)
             
-            # Siempre generar exactamente 2 enemigos por sala
-            positions = [
-                nearest_free(WIDTH // 3, HEIGHT // 3),
-                nearest_free(WIDTH * 2 // 3, HEIGHT * 2 // 3),
-            ]
-
+            # Calcular número de enemigos basado en la dificultad
+            if self.difficulty == "Normal":
+                base_enemies = 3  # 3-6 enemigos en Normal
+                max_enemies = 6
+            elif self.difficulty == "Hard":
+                base_enemies = 4  # 4-10 enemigos en Hard
+                max_enemies = 10
+            else:  # Easy o cualquier otra dificultad
+                base_enemies = 2  # 2-4 enemigos en Easy
+                max_enemies = 4
+            
+            # Ajustar el número de enemigos con un poco de aleatoriedad
+            num_enemies = random.randint(base_enemies, max_enemies)
+            
+            # Generar posiciones distribuidas en la habitación
+            positions = []
+            for i in range(num_enemies):
+                # Distribuir en una cuadrícula y luego aleatorizar ligeramente
+                cols = min(4, num_enemies)  # Máximo 4 columnas
+                rows = (num_enemies + cols - 1) // cols
+                
+                if num_enemies > 4:
+                    # Para más de 4 enemigos, usar una cuadrícula más densa
+                    col = i % cols
+                    row = (i // cols) % rows
+                    x = (WIDTH * (col + 1)) // (cols + 1)
+                    y = (HEIGHT * (row + 1)) // (rows + 1)
+                else:
+                    # Para 4 o menos, usar posiciones fijas en las esquinas
+                    if i == 0: x, y = WIDTH // 3, HEIGHT // 3
+                    elif i == 1: x, y = WIDTH * 2 // 3, HEIGHT // 3
+                    elif i == 2: x, y = WIDTH // 3, HEIGHT * 2 // 3
+                    else: x, y = WIDTH * 2 // 3, HEIGHT * 2 // 3
+                
+                # Añadir un poco de aleatoriedad a la posición
+                x += random.randint(-50, 50)
+                y += random.randint(-50, 50)
+                
+                # Asegurar que esté dentro de los límites
+                x = max(100, min(WIDTH - 100, x))
+                y = max(100, min(HEIGHT - 100, y))
+                
+                # Encontrar la posición válida más cercana
+                valid_pos = nearest_free(x, y)
+                positions.append(valid_pos)
+            
+            # Crear los enemigos
             enemies = [self._spawn_enemy(px, py) for (px, py) in positions]
             room.enemies = enemies
             room.spawned = True
@@ -370,6 +421,27 @@ class PlayScene(Scene):
             if event.key == pygame.K_k:
                 self.player.shield = False
 
+    def _calculate_spawn_position(self, room) -> tuple[int, int]:
+        """Calculate a valid spawn position for the player in the current room."""
+        # Get the room map and find a valid spawn position
+        room_map = room.get_room_map()
+        cell_x, cell_y = room.find_valid_spawn_position()
+        
+        # Calculate pixel position from cell position
+        p = ROOM_PADDING
+        usable_width = WIDTH - 2 * p - 20
+        usable_height = HEIGHT - 2 * p - 20
+        map_width = len(room_map[0]) if room_map else 1
+        map_height = len(room_map) if room_map else 1
+        cell_width = usable_width // map_width
+        cell_height = usable_height // map_height
+        
+        # Calculate the center of the cell
+        x = p + 10 + (cell_x * cell_width) + (cell_width // 2)
+        y = p + 10 + (cell_y * cell_height) + (cell_height // 2)
+        
+        return int(x), int(y)
+
     def update(self, dt: float) -> None:
         if self.paused:
             return
@@ -454,9 +526,18 @@ class PlayScene(Scene):
         room = self.dungeon.get_room()
         for e in self.enemies:
             prev_charge_flag = getattr(e, 'charge_just_started', False)
-            e.update(self.player.rect, dt, room.walls(), room.obstacles())
+            # Actualizar enemigo y verificar si sus proyectiles golpearon al jugador
+            damage = e.update(self.player.rect, dt, room.walls(), room.obstacles())
+            # Si el enemigo es un sniper y su proyectil golpeó al jugador
+            if damage and self.player.invuln <= 0 and not self.player.shield:
+                self.player.take_damage(damage)
+                if self.snd_player_hurt:
+                    self.snd_player_hurt.play()
+                # temblor más fuerte al recibir daño
+                self.shake_time = max(self.shake_time, 0.25)
+                self.shake_intensity = max(self.shake_intensity, 6)
             # SFX: inicio de carga del brute
-            if e.kind == 'brute' and not prev_charge_flag and getattr(e, 'charge_just_started', False):
+            elif e.kind == 'brute' and not prev_charge_flag and getattr(e, 'charge_just_started', False):
                 try:
                     if self.snd_brute_charge:
                         self.snd_brute_charge.play()
@@ -796,6 +877,10 @@ class PlayScene(Scene):
         # Valor numérico de magia
         mp_text = self.font.render(f"MP {int(self.player.magic)}/{int(MAGIC_MAX)}", True, WHITE)
         surface.blit(mp_text, (x + bar_w + 8, y - 2))
+        
+        # Mostrar puntuación
+        score_text = self.font.render(f"Puntos: {self.score}", True, WHITE)
+        surface.blit(score_text, (WIDTH - score_text.get_width() - 10, 10))
 
     def draw_pause_menu(self, surface: pygame.Surface) -> None:
         # Fondo translúcido
@@ -902,6 +987,8 @@ class PlayScene(Scene):
         self._loot_chance = max(0.0, min(1.0, LOOT_CHANCE * loot_scale))
 
     def _on_enemy_killed(self, enemy: Enemy) -> None:
+        # Aumentar puntuación por matar enemigo
+        self.score += 100
         # Probabilidad configurada de botín
         if random.random() < self._loot_chance:
             # Selección ponderada por LOOT_WEIGHTS
@@ -930,6 +1017,8 @@ class PlayScene(Scene):
                     self.player.magic = min(MAGIC_MAX, self.player.magic + 40)
                 elif p.kind == 'arrow':
                     self.inventory.add('arrow', 5)
+                    # Aumentar puntuación por recoger flechas
+                    self.score += 10
                 if self.snd_pickup:
                     self.snd_pickup.play()
             else:
@@ -977,6 +1066,9 @@ class PlayScene(Scene):
                             self.has_health_doubler = True
                         else:
                             print("El doblador de vida ya fue usado. No tiene más efecto.")
+                    
+                    # Aumentar puntuación por abrir cofre
+                    self.score += 50
                     
                     if self.snd_pickup:
                         self.snd_pickup.play()

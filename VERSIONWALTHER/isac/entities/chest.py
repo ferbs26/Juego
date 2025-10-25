@@ -1,3 +1,4 @@
+import os
 import pygame
 import random
 import math
@@ -8,6 +9,15 @@ class Chest:
         self.rect = pygame.Rect(x, y, TILE, TILE)
         self.opened = False
         self.item_dropped = None
+        
+        # Cargar sprites
+        self.closed_sprite = pygame.image.load(os.path.join('assets', 'structure', 'cofre2.png'))
+        self.open_sprite = pygame.image.load(os.path.join('assets', 'structure', 'cofre2b.png'))
+        
+        # Escalar los sprites al tamaño del tile
+        self.closed_sprite = pygame.transform.scale(self.closed_sprite, (TILE, TILE))
+        self.open_sprite = pygame.transform.scale(self.open_sprite, (TILE, TILE))
+        
         # Animación de apertura
         self.opening_timer = 0.0
         self.opening_duration = 0.5
@@ -36,38 +46,13 @@ class Chest:
             self.opening_timer = max(0.0, self.opening_timer - dt)
     
     def draw(self, surface: pygame.Surface):
-        """Dibuja el cofre con animación"""
-        # Color base del cofre - marrón más visible
-        if self.opened:
-            # Cofre abierto - más claro
-            chest_color = (160, 82, 45)   # Marrón claro
-            lid_color = (205, 133, 63)    # Marrón más claro (Peru)
+        """Dibuja el cofre con el sprite correspondiente"""
+        if self.opening_timer > 0 or self.opened:
+            # Mostrar sprite de cofre abierto si se está abriendo o ya está abierto
+            surface.blit(self.open_sprite, self.rect)
         else:
-            # Cofre cerrado - marrón oscuro pero visible
-            chest_color = (139, 69, 19)   # Marrón saddle brown
-            lid_color = (160, 82, 45)     # Marrón claro
-        
-        # Cuerpo del cofre
-        body_rect = pygame.Rect(self.rect.x, self.rect.y + 8, self.rect.width, self.rect.height - 8)
-        pygame.draw.rect(surface, chest_color, body_rect)
-        pygame.draw.rect(surface, (0, 0, 0), body_rect, 2)
-        
-        # Tapa del cofre
-        if self.opened:
-            # Tapa abierta (rotada hacia atrás)
-            lid_rect = pygame.Rect(self.rect.x, self.rect.y - 4, self.rect.width, 12)
-        else:
-            # Tapa cerrada
-            lid_rect = pygame.Rect(self.rect.x, self.rect.y, self.rect.width, 12)
-        
-        pygame.draw.rect(surface, lid_color, lid_rect)
-        pygame.draw.rect(surface, (0, 0, 0), lid_rect, 2)
-        
-        # Cerradura/decoración
-        if not self.opened:
-            lock_rect = pygame.Rect(self.rect.centerx - 3, self.rect.centery, 6, 8)
-            pygame.draw.rect(surface, (255, 215, 0), lock_rect)  # Dorado
-            pygame.draw.rect(surface, (0, 0, 0), lock_rect, 1)
+            # Mostrar sprite de cofre cerrado
+            surface.blit(self.closed_sprite, self.rect)
         
         # Efecto de brillo cuando se abre
         if self.opening_timer > 0:

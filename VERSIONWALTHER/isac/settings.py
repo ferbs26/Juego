@@ -21,6 +21,26 @@ ENEMY_TYPES = {
         'color': (150, 30, 30),
         'weight': 0.15,
     },
+    'sniper': {
+        'hp': 1,
+        'speed_scale': 0.0,  # No se mueve
+        'color': (200, 50, 200),  # Color púrpura
+        'weight': 0.2,
+    },
+    'ciclope': {
+        'hp': 6,
+        'speed_scale': 0.5,  # Muy lento
+        'color': (100, 50, 150),  # Color morado oscuro
+        'weight': 0.2,
+        'damage': 3,  # Daño triplicado a 15
+    },
+    'monster': {
+        'hp': 2,
+        'speed_scale': 0.0,  # No se mueve
+        'color': (200, 150, 50),  # Color cobre
+        'weight': 0.15,
+        'shoot_delay': 4.0,  # Dispara cada 4 segundos (más lento que el sniper)
+    },
 }
 
 # Dificultad: presets de escalado
@@ -79,7 +99,7 @@ ARROW_SPEED = 520
 ARROW_SIZE = 8
 ARROW_DAMAGE = 1
 
-PLAYER_MAX_HP = 3
+PLAYER_MAX_HP = 10
 PLAYER_INVULN_TIME = 1.0  # segundos tras recibir daño
 FIRE_COOLDOWN = 0.20  # segundos entre disparos
 
@@ -91,6 +111,23 @@ MELEE_RANGE = 22
 MELEE_DAMAGE = 1
 SHIELD_MAGIC_COST_PER_SEC = 25  # gastar magia por segundo al mantener escudo
 HUD_HEART_SIZE = 16
+
+# --- CONFIGURACIÓN DE SPRITES DE VIDA (NUEVO) ---
+# Diccionario que mapea la HP actual a la ruta del sprite.
+HUD_HP_SPRITES = {
+    10: 'assets/gui/VIDA.png', # Vida al máximo
+    9: 'assets/gui/VIDA1.png',
+    8: 'assets/gui/VIDA2.png',
+    7: 'assets/gui/VIDA3.png', 
+    6: 'assets/gui/VIDA4.png', 
+    5: 'assets/gui/VIDA5.png',
+    4: 'assets/gui/VIDA6.png',
+    3: 'assets/gui/VIDA7.png', 
+    2: 'assets/gui/VIDA8.png',
+    1: 'assets/gui/VIDA9.png',
+    0: 'assets/gui/VIDAVacio.png', # Jugador muerto o sin vida
+}
+# ---------------------------------------------------
 
 # Dungeon / Rooms
 TILE = 32
