@@ -21,6 +21,26 @@ ENEMY_TYPES = {
         'color': (150, 30, 30),
         'weight': 0.15,
     },
+    'sniper': {
+        'hp': 1,
+        'speed_scale': 0.0,  # No se mueve
+        'color': (200, 50, 200),  # Color púrpura
+        'weight': 0.2,
+    },
+    'ciclope': {
+        'hp': 6,
+        'speed_scale': 0.5,  # Muy lento
+        'color': (100, 50, 150),  # Color morado oscuro
+        'weight': 0.2,
+        'damage': 3,  # Daño triplicado a 15
+    },
+    'monster': {
+        'hp': 2,
+        'speed_scale': 0.0,  # No se mueve
+        'color': (200, 150, 50),  # Color cobre
+        'weight': 0.15,
+        'shoot_delay': 4.0,  # Dispara cada 4 segundos (más lento que el sniper)
+    },
 }
 
 # Dificultad: presets de escalado

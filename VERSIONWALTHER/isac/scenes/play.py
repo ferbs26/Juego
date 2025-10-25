@@ -240,12 +240,53 @@ class PlayScene(Scene):
                     chest = Chest(chest_x, chest_y)
                     room.chests.append(chest)
             
-            # Siempre generar exactamente 2 enemigos por sala
-            positions = [
-                nearest_free(WIDTH // 3, HEIGHT // 3),
-                nearest_free(WIDTH * 2 // 3, HEIGHT * 2 // 3),
-            ]
-
+            # Calcular número de enemigos basado en la dificultad
+            if self.difficulty == "Normal":
+                base_enemies = 3  # 3-6 enemigos en Normal
+                max_enemies = 6
+            elif self.difficulty == "Hard":
+                base_enemies = 4  # 4-10 enemigos en Hard
+                max_enemies = 10
+            else:  # Easy o cualquier otra dificultad
+                base_enemies = 2  # 2-4 enemigos en Easy
+                max_enemies = 4
+            
+            # Ajustar el número de enemigos con un poco de aleatoriedad
+            num_enemies = random.randint(base_enemies, max_enemies)
+            
+            # Generar posiciones distribuidas en la habitación
+            positions = []
+            for i in range(num_enemies):
+                # Distribuir en una cuadrícula y luego aleatorizar ligeramente
+                cols = min(4, num_enemies)  # Máximo 4 columnas
+                rows = (num_enemies + cols - 1) // cols
+                
+                if num_enemies > 4:
+                    # Para más de 4 enemigos, usar una cuadrícula más densa
+                    col = i % cols
+                    row = (i // cols) % rows
+                    x = (WIDTH * (col + 1)) // (cols + 1)
+                    y = (HEIGHT * (row + 1)) // (rows + 1)
+                else:
+                    # Para 4 o menos, usar posiciones fijas en las esquinas
+                    if i == 0: x, y = WIDTH // 3, HEIGHT // 3
+                    elif i == 1: x, y = WIDTH * 2 // 3, HEIGHT // 3
+                    elif i == 2: x, y = WIDTH // 3, HEIGHT * 2 // 3
+                    else: x, y = WIDTH * 2 // 3, HEIGHT * 2 // 3
+                
+                # Añadir un poco de aleatoriedad a la posición
+                x += random.randint(-50, 50)
+                y += random.randint(-50, 50)
+                
+                # Asegurar que esté dentro de los límites
+                x = max(100, min(WIDTH - 100, x))
+                y = max(100, min(HEIGHT - 100, y))
+                
+                # Encontrar la posición válida más cercana
+                valid_pos = nearest_free(x, y)
+                positions.append(valid_pos)
+            
+            # Crear los enemigos
             enemies = [self._spawn_enemy(px, py) for (px, py) in positions]
             room.enemies = enemies
             room.spawned = True
@@ -485,9 +526,18 @@ class PlayScene(Scene):
         room = self.dungeon.get_room()
         for e in self.enemies:
             prev_charge_flag = getattr(e, 'charge_just_started', False)
-            e.update(self.player.rect, dt, room.walls(), room.obstacles())
+            # Actualizar enemigo y verificar si sus proyectiles golpearon al jugador
+            damage = e.update(self.player.rect, dt, room.walls(), room.obstacles())
+            # Si el enemigo es un sniper y su proyectil golpeó al jugador
+            if damage and self.player.invuln <= 0 and not self.player.shield:
+                self.player.take_damage(damage)
+                if self.snd_player_hurt:
+                    self.snd_player_hurt.play()
+                # temblor más fuerte al recibir daño
+                self.shake_time = max(self.shake_time, 0.25)
+                self.shake_intensity = max(self.shake_intensity, 6)
             # SFX: inicio de carga del brute
-            if e.kind == 'brute' and not prev_charge_flag and getattr(e, 'charge_just_started', False):
+            elif e.kind == 'brute' and not prev_charge_flag and getattr(e, 'charge_just_started', False):
                 try:
                     if self.snd_brute_charge:
                         self.snd_brute_charge.play()
