@@ -86,6 +86,26 @@ class PlayScene(Scene):
         self.companion_spikes: list[Spike] = []
         self.active_companion: Companion = None
         
+        # Cargar sprites
+        try:
+            # Cargar sprite del corazón
+            self.heart_img = pygame.image.load('assets/player/corazon.png').convert_alpha()
+            self.heart_img = pygame.transform.scale(self.heart_img, (HUD_HEART_SIZE, HUD_HEART_SIZE))
+            self.heart_empty_img = self.heart_img.copy()
+            # Hacer la imagen de corazón vacío más oscura
+            self.heart_empty_img.fill((100, 100, 100, 128), special_flags=pygame.BLEND_RGBA_MULT)
+            
+            # Cargar sprite de la llave
+            self.key_img = pygame.image.load('assets/player/llave.png').convert_alpha()
+            # Escalar la llave para que quepa en el inventario (ajustar tamaño según sea necesario)
+            self.key_img = pygame.transform.scale(self.key_img, (24, 24))
+        except Exception as e:
+            print(f"Error cargando sprites: {e}")
+            print("Usando gráficos por defecto como respaldo.")
+            self.heart_img = None
+            self.heart_empty_img = None
+            self.key_img = None
+        
         # Tracking de items obtenidos
         self.has_speed_boots = False
         self.has_companion = False
@@ -864,8 +884,16 @@ class PlayScene(Scene):
         for i in range(self.player.max_hp):
             x = 10 + i * (HUD_HEART_SIZE + 4)
             y = 10
-            color = RED if i < self.player.hp else (60, 60, 60)
-            pygame.draw.rect(surface, color, (x, y, HUD_HEART_SIZE, HUD_HEART_SIZE), border_radius=4)
+            if self.heart_img is not None:
+                # Usar sprite de corazón si está disponible
+                if i < self.player.hp:
+                    surface.blit(self.heart_img, (x, y))
+                else:
+                    surface.blit(self.heart_empty_img, (x, y))
+            else:
+                # Fallback a rectángulos si no hay sprite
+                color = RED if i < self.player.hp else (60, 60, 60)
+                pygame.draw.rect(surface, color, (x, y, HUD_HEART_SIZE, HUD_HEART_SIZE), border_radius=4)
         # Barra de magia
         bar_w = 160
         bar_h = 10
@@ -1100,10 +1128,20 @@ class PlayScene(Scene):
         rect_k = pygame.Rect(base_x + slot_w + gap, base_y, slot_w, slot_h)
         pygame.draw.rect(surface, (40, 40, 40), rect_k, border_radius=6)
         pygame.draw.rect(surface, (120, 120, 120), rect_k, 2, border_radius=6)
-        # Ícono simple de llave
-        pygame.draw.circle(surface, (255, 215, 0), (rect_k.x + 14, rect_k.y + 20), 6)
-        pygame.draw.rect(surface, (255, 215, 0), (rect_k.x + 20, rect_k.y + 18, 14, 4))
-        pygame.draw.rect(surface, (255, 215, 0), (rect_k.x + 30, rect_k.y + 16, 3, 8))
+        
+        # Dibujar sprite de llave o ícono simple como respaldo
+        if hasattr(self, 'key_img') and self.key_img is not None:
+            # Calcular posición centrada verticalmente en el slot
+            key_x = rect_k.x + 12
+            key_y = rect_k.y + (slot_h - self.key_img.get_height()) // 2
+            surface.blit(self.key_img, (key_x, key_y))
+        else:
+            # Respaldo: ícono simple de llave
+            pygame.draw.circle(surface, (255, 215, 0), (rect_k.x + 14, rect_k.y + 20), 6)
+            pygame.draw.rect(surface, (255, 215, 0), (rect_k.x + 20, rect_k.y + 18, 14, 4))
+            pygame.draw.rect(surface, (255, 215, 0), (rect_k.x + 30, rect_k.y + 16, 3, 8))
+            
+        # Mostrar cantidad de llaves
         txt_k = self.font.render(f"x{self.inventory.keys}", True, WHITE)
         surface.blit(txt_k, (rect_k.x + 40, rect_k.y + 10))
 
