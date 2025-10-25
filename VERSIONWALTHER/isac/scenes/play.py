@@ -1031,7 +1031,7 @@ class PlayScene(Scene):
             # Área de detección más grande
             detection_area = chest.rect.inflate(60, 60)
             if not chest.opened and detection_area.colliderect(self.player.rect):
-                item_type = chest.open()
+                item_type = chest.open(self.inventory)
                 if item_type:
                     # Crear el item correspondiente y aplicar efecto según el tipo
                     if item_type == 'speed_boots':
