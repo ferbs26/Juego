@@ -1,22 +1,22 @@
 {
   "player": {
-    "hp": 3,
-    "max_hp": 3,
+    "hp": 19,
+    "max_hp": 20,
     "magic": 100,
     "pos": [
-      400,
-      324
+      245,
+      289
     ]
   },
   "inventory": {
-    "bombs": 1,
-    "keys": 0,
-    "arrows": 5
+    "bombs": 0,
+    "keys": 2,
+    "arrows": 10
   },
   "dungeon": {
     "current": [
       0,
-      0
+      2
     ]
   }
 }

@@ -5,4 +5,3 @@ from isac.scenes.menu import MenuScene
 if __name__ == "__main__":
     Game(MenuScene).run()
     
-    

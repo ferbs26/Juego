@@ -22,11 +22,21 @@ class Chest:
         self.opening_timer = 0.0
         self.opening_duration = 0.5
         
-    def open(self) -> str:
-        """Abre el cofre y devuelve el tipo de item que contiene"""
+    def can_be_opened(self, inventory) -> bool:
+        """Verifica si el jugador tiene una llave para abrir el cofre"""
+        return inventory.keys > 0
+        
+    def open(self, inventory) -> str:
+        """Intenta abrir el cofre y devuelve el tipo de item que contiene si se pudo abrir"""
         if self.opened:
             return None
             
+        # Verificar si el jugador tiene una llave
+        if not self.can_be_opened(inventory):
+            return None
+            
+        # Usar una llave
+        inventory.use_key()
         self.opened = True
         self.opening_timer = self.opening_duration
         
