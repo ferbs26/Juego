@@ -38,6 +38,9 @@ class Player:
         self.sprites = {}
         self.current_sprite = None
         self.cargar_sprites()
+        
+        # Disparo infinito (desactivado por defecto)
+        self.infinite_shots = False
 
     def update(self, dt: float, walls: list, obstacles: list) -> None:
         # Reducir cooldowns
@@ -262,3 +265,7 @@ class Player:
 
     def revert_position(self) -> None:
         self.rect.center = self._prev_center
+        
+    def set_infinite_shots(self, enabled: bool) -> None:
+        """Activa o desactiva el disparo infinito."""
+        self.infinite_shots = enabled

@@ -42,6 +42,8 @@ class Enemy:
         # Inicializar diccionario de sprites y cargarlos
         self.sprites = {}
         self.current_sprite = None
+        self.ghost = hasattr(self, 'ghost') and self.ghost  # Para saber si es un fantasma
+        self.direction = 'down'  # Dirección inicial para enemigos con sprites direccionales
         self.cargar_sprites()
 
     def cargar_sprites(self):
@@ -113,12 +115,39 @@ class Enemy:
                 (ENEMY_SIZE, ENEMY_SIZE)
             )
             
+            # Cargar sprites del fantasma con direcciones
+            self.sprites['ghost_right'] = pygame.transform.scale(
+                pygame.image.load('assets/enemies/pale mask/pale_mask3.png').convert_alpha(), 
+                (ENEMY_SIZE, ENEMY_SIZE)
+            )
+            self.sprites['ghost_left'] = pygame.transform.scale(
+                pygame.image.load('assets/enemies/pale mask/pale_mask1.png').convert_alpha(), 
+                (ENEMY_SIZE, ENEMY_SIZE)
+            )
+            self.sprites['ghost_down'] = pygame.transform.scale(
+                pygame.image.load('assets/enemies/pale mask/pale_mask4.png').convert_alpha(), 
+                (ENEMY_SIZE, ENEMY_SIZE)
+            )
+            self.sprites['ghost_up'] = pygame.transform.scale(
+                pygame.image.load('assets/enemies/pale mask/pale_mask2.png').convert_alpha(), 
+                (ENEMY_SIZE, ENEMY_SIZE)
+            )
+            
             # Establecer sprite inicial
             if self.kind == 'brute':
                 self.current_sprite = self.sprites['brute_down']
+                self.direction = 'down'
             elif self.kind == 'ciclope':
                 self.current_sprite = self.sprites['ciclope_down']
-                self.direction = 'down'  # Dirección inicial
+                self.direction = 'down'
+            elif self.kind == 'ghost':
+                self.current_sprite = self.sprites['ghost_down']
+                self.direction = 'down'
+                # Hacer el sprite semi-transparente
+                for key in ['ghost_right', 'ghost_left', 'ghost_down', 'ghost_up']:
+                    if key in self.sprites:
+                        s = self.sprites[key]
+                        s.set_alpha(180)  # Hacerlo semi-transparente
             else:
                 self.current_sprite = self.sprites.get(self.kind, self.sprites['grunt'])
 
@@ -191,7 +220,33 @@ class Enemy:
             return True  # Para otros enemigos, causar 1 de daño
             
         # Comportamiento específico del tipo de enemigo
-        if self.kind == 'sniper':
+        if self.kind == 'ghost':
+            # Comportamiento similar al brute pero puede atravesar paredes
+            dx = player_rect.centerx - self.rect.centerx
+            dy = player_rect.centery - self.rect.centery
+            dist = math.sqrt(dx*dx + dy*dy)
+            
+            if dist > 0:
+                dx = dx / dist
+                dy = dy / dist
+                
+            # Actualizar dirección para los sprites
+            if abs(dx) > abs(dy):
+                self.direction = 'right' if dx > 0 else 'left'
+            elif dy != 0:
+                self.direction = 'down' if dy > 0 else 'up'
+                
+            # Actualizar sprite según la dirección
+            sprite_key = f'ghost_{self.direction}'
+            if sprite_key in self.sprites:
+                self.current_sprite = self.sprites[sprite_key]
+                
+            # Mover al fantasma (puede atravesar paredes)
+            speed = ENEMY_SPEED * self.speed_scale * dt
+            self.rect.x += dx * speed
+            self.rect.y += dy * speed
+            
+        elif self.kind == 'sniper':
             # Disparar al jugador periódicamente
             self._shoot_timer -= dt
             if self._shoot_timer <= 0:
@@ -391,52 +446,70 @@ class Enemy:
             # Si no hay colisión, usar esta dirección
             if not collision_found:
                 self.rect.x = test_x
-                self.rect.y = test_y
-                return
-        
-        # Si ninguna dirección funciona, quedarse quieto (pero esto es raro)
 
-    def draw(self, surface: pygame.Surface):
-        if self.alive:
-            # Si tenemos sprite, usarlo; sino, dibujar rectángulo como fallback
-            if self.current_sprite:
-                sprite_to_draw = self.current_sprite.copy()
-                
-                # Aplicar efectos de color
-                # Parpadeo blanco cuando está herido (prioridad máxima)
-                if self.hurt_timer > 0 and int(self.hurt_timer * 15) % 2 == 0:
-                    # Crear superficie blanca del mismo tamaño
-                    white_surface = pygame.Surface(sprite_to_draw.get_size())
-                    white_surface.fill((255, 255, 255))
-                    white_surface.set_alpha(180)  # Semi-transparente para mezclar
-                    sprite_to_draw.blit(white_surface, (0, 0), special_flags=pygame.BLEND_ADD)
-                # Telegraph: brute en carga se tiñe anaranjado (solo si no está herido)
-                elif self.kind == 'brute' and self._charge_time > 0:
-                    orange_surface = pygame.Surface(sprite_to_draw.get_size())
-                    orange_surface.fill((255, 200, 80))
-                    orange_surface.set_alpha(100)
-                    sprite_to_draw.blit(orange_surface, (0, 0), special_flags=pygame.BLEND_ADD)
-                # Efecto para sniper al disparar
-                elif self.kind == 'sniper' and self._shoot_timer > 1.8:
-                    red_surface = pygame.Surface(sprite_to_draw.get_size())
-                    red_surface.fill((255, 100, 100))
-                    red_surface.set_alpha(100)
-                    sprite_to_draw.blit(red_surface, (0, 0), special_flags=pygame.BLEND_ADD)
-                
-                surface.blit(sprite_to_draw, self.rect)
-                
-                # Dibujar proyectiles
-                self.draw_projectiles(surface)
-            else:
-                # Fallback: dibujar rectángulo si no hay sprite
-                color = self.color
-                if self.hurt_timer > 0 and int(self.hurt_timer * 15) % 2 == 0:
-                    color = (255, 255, 255)
-                elif self.kind == 'brute' and self._charge_time > 0:
-                    color = (255, 200, 80)
-                elif self.kind == 'sniper' and self._shoot_timer > 1.8:
-                    color = (255, 150, 150)
-                pygame.draw.rect(surface, color, self.rect)
-                
-                # Dibujar proyectiles (cuando no hay sprite)
-                self.draw_projectiles(surface)
+        # Si ninguna dirección funciona, quedarse quieto (pero esto es raro)
+        pass
+
+    def draw(self, surface: pygame.Surface, camera_offset=(0, 0)):
+        if not self.alive:
+            return
+
+        # Si es un fantasma, dibujar con transparencia
+        if self.kind == 'ghost' and self.current_sprite:
+            # Guardar el estado de la superficie
+            old_alpha = self.current_sprite.get_alpha()
+            # Aplicar transparencia
+            self.current_sprite.set_alpha(180)
+            # Dibujar
+            surface.blit(self.current_sprite, 
+                        (self.rect.x + camera_offset[0], self.rect.y + camera_offset[1]))
+            # Restaurar la transparencia original
+            self.current_sprite.set_alpha(old_alpha)
+            # Dibujar proyectiles para fantasmas
+            self.draw_projectiles(surface)
+            return
+
+        # Si tenemos sprite, usarlo
+        if self.current_sprite:
+            sprite_to_draw = self.current_sprite.copy()
+
+            # Aplicar efectos de color
+            # Parpadeo blanco cuando está herido (prioridad máxima)
+            if self.hurt_timer > 0 and int(self.hurt_timer * 15) % 2 == 0:
+                # Crear superficie blanca del mismo tamaño
+                white_surface = pygame.Surface(sprite_to_draw.get_size())
+                white_surface.fill((255, 255, 255))
+                white_surface.set_alpha(180)  # Semi-transparente para mezclar
+                sprite_to_draw.blit(white_surface, (0, 0), special_flags=pygame.BLEND_ADD)
+            # Efecto para brute en carga
+            elif self.kind == 'brute' and self._charge_time > 0:
+                orange_surface = pygame.Surface(sprite_to_draw.get_size())
+                orange_surface.fill((255, 200, 80))
+                orange_surface.set_alpha(100)
+                sprite_to_draw.blit(orange_surface, (0, 0), special_flags=pygame.BLEND_ADD)
+            # Efecto para sniper al disparar
+            elif self.kind == 'sniper' and self._shoot_timer > 1.8:
+                red_surface = pygame.Surface(sprite_to_draw.get_size())
+                red_surface.fill((255, 100, 100))
+                red_surface.set_alpha(100)
+                sprite_to_draw.blit(red_surface, (0, 0), special_flags=pygame.BLEND_ADD)
+
+            # Dibujar el sprite con efectos aplicados
+            surface.blit(sprite_to_draw, (self.rect.x + camera_offset[0], self.rect.y + camera_offset[1]))
+        else:
+            # Fallback: dibujar rectángulo si no hay sprite
+            color = self.color
+            if self.hurt_timer > 0 and int(self.hurt_timer * 15) % 2 == 0:
+                color = (255, 255, 255)
+            elif self.kind == 'brute' and self._charge_time > 0:
+                color = (255, 200, 80)
+            elif self.kind == 'sniper' and self._shoot_timer > 1.8:
+                color = (255, 150, 150)
+            pygame.draw.rect(surface, color, 
+                           (self.rect.x + camera_offset[0], 
+                            self.rect.y + camera_offset[1], 
+                            self.rect.width, 
+                            self.rect.height))
+        
+        # Dibujar proyectiles
+        self.draw_projectiles(surface)

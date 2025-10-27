@@ -4,42 +4,49 @@
 # La velocidad base es ENEMY_SPEED; cada tipo puede escalarla.
 ENEMY_TYPES = {
     'grunt': {
-        'hp': 2,
+        'hp': 4,
         'speed_scale': 1.0,
         'color': (200, 50, 50),
         'weight': 0.6,
     },
     'runner': {
-        'hp': 1,
-        'speed_scale': 1.4,
+        'hp': 2,
+        'speed_scale': 1.0,
         'color': (255, 120, 120),
         'weight': 0.25,
     },
     'brute': {
-        'hp': 3,
+        'hp': 6,
         'speed_scale': 0.75,
         'color': (150, 30, 30),
         'weight': 0.15,
     },
     'sniper': {
-        'hp': 1,
+        'hp': 2,
         'speed_scale': 0.0,  # No se mueve
         'color': (200, 50, 200),  # Color púrpura
         'weight': 0.2,
     },
     'ciclope': {
-        'hp': 6,
+        'hp': 12,
         'speed_scale': 0.5,  # Muy lento
         'color': (100, 50, 150),  # Color morado oscuro
         'weight': 0.2,
         'damage': 3,  # Daño triplicado a 15
     },
     'monster': {
-        'hp': 2,
+        'hp': 4,
         'speed_scale': 0.0,  # No se mueve
         'color': (200, 150, 50),  # Color cobre
         'weight': 0.15,
         'shoot_delay': 4.0,  # Dispara cada 4 segundos (más lento que el sniper)
+    },
+    'ghost': {
+        'hp': 3,  # Menos vida que el brute (6)
+        'speed_scale': 1.2,  # Más rápido que el runner (1.4 vs 1.0)
+        'color': (180, 180, 255, 150),  # Azul claro semi-transparente
+        'weight': 0.1,  # Peso bajo para que aparezca con menos frecuencia
+        'ghost': True,  # Flag para indicar que puede atravesar paredes
     },
 }
 
