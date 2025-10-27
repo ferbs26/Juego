@@ -1,5 +1,6 @@
 import os
 import random
+import math
 import pygame
 
 from isac.core.scene import Scene
@@ -43,6 +44,7 @@ from isac.entities.pickup import Pickup
 from isac.core.inventory import Inventory
 from isac.core.dungeon import Dungeon
 from isac.core.persistence import save_game, load_game, save_options, load_options
+from isac.core.map import MapViewer
 from isac.entities.arrow import Arrow
 from isac.entities.chest import Chest
 from isac.entities.speed_boots import SpeedBoots
@@ -55,6 +57,9 @@ class PlayScene(Scene):
         super().__init__(game)
         # Initialize dungeon first
         self.dungeon = Dungeon()
+        
+        # Initialize map viewer
+        self.map_viewer = MapViewer(self.dungeon, cell_size=20, margin=3)
         
         # Get current room and find a valid spawn position
         current_room = self.dungeon.get_room()
@@ -333,6 +338,14 @@ class PlayScene(Scene):
             self.dungeon.open_all_unlocked_in_current()
 
     def handle_event(self, event: pygame.event.Event) -> None:
+        # Dejar que el visor de mapa maneje sus eventos primero
+        if self.map_viewer.handle_event(event):
+            return True
+            
+        # Manejar evento de desactivación del disparo infinito
+        if event.type == pygame.USEREVENT + 1:
+            self.player.set_infinite_shots(False)
+            
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             # Import local para evitar import circular
             from .menu import MenuScene
@@ -422,19 +435,23 @@ class PlayScene(Scene):
                 load_game(self._save_path, self.player, self.inventory, self.dungeon)
             # Disparar flecha (arco) con L
             elif event.key == pygame.K_l:
-                if self.inventory.use_arrow():
-                    dx = dy = 0
-                    if self.player.facing == 'up':
-                        dy = -1
-                    elif self.player.facing == 'down':
-                        dy = 1
-                    elif self.player.facing == 'left':
-                        dx = -1
-                    elif self.player.facing == 'right':
-                        dx = 1
-                    if dx != 0 or dy != 0:
-                        self.arrows.append(Arrow(self.player.rect.centerx, self.player.rect.centery, dx, dy))
-                        if self.snd_arrow_shoot:
+                # Siempre permite disparar flechas infinitamente
+                dx = dy = 0
+                if self.player.facing == 'up':
+                    dy = -1
+                elif self.player.facing == 'down':
+                    dy = 1
+                elif self.player.facing == 'left':
+                    dx = -1
+                elif self.player.facing == 'right':
+                    dx = 1
+                if dx != 0 or dy != 0:
+                    self.arrows.append(Arrow(self.player.rect.centerx, self.player.rect.centery, dx, dy))
+                    if self.snd_arrow_shoot:
+                        self.snd_arrow_shoot.play()
+                        # Mantenemos el sonido especial para disparos infinitos si se desea
+                        if self.player.infinite_shots and self.snd_pickup:
+                            self.snd_arrow_shoot.set_volume(0.7)
                             self.snd_arrow_shoot.play()
         elif event.type == pygame.KEYUP:
             # Soltar escudo cuando se suelta K
@@ -754,7 +771,7 @@ class PlayScene(Scene):
 
         # Dibujar enemigos
         for e in self.enemies:
-            e.draw(world)
+            e.draw(surface)  # Changed from world to surface to match the method signature
 
         # Dibujar flashes de muerte sobre el mundo
         for r, t in self.kill_flashes:
@@ -782,18 +799,23 @@ class PlayScene(Scene):
 
         # Dibujar pinchos del compañero
         for spike in self.companion_spikes:
-            spike.draw(world)
+            if hasattr(spike, 'draw'):
+                spike.draw(world)
 
         # Blit del mundo con shake
         surface.blit(world, (ox, oy))
 
-        # HUD de corazones y magia (sin shake)
+        # HUD de corazones y magia        # Draw HUD
         self.draw_hud(surface)
+        
+        # Draw map (on top of everything)
+        self.map_viewer.draw(surface)
 
         # Slots de inventario (sin shake)
         self.draw_inventory_slots(surface)
 
         # Mostrar estado de inventario (texto simple)
+        # ... (rest of the code remains the same)
         inv_text = self.font.render(
             f"Bombas: {self.inventory.bombs}  Llaves: {self.inventory.keys}  Flechas: {self.inventory.arrows}",
             True, WHITE,
@@ -1014,22 +1036,64 @@ class PlayScene(Scene):
         loot_scale = float(self._diff_preset.get('loot_scale', 1.0))
         self._loot_chance = max(0.0, min(1.0, LOOT_CHANCE * loot_scale))
 
+    def _is_valid_pickup_position(self, x: int, y: int) -> bool:
+        """Verifica si una posición es válida para colocar un pickup (no dentro de paredes)."""
+        # Crear un rectángulo temporal para el pickup
+        pickup_rect = pygame.Rect(x - 10, y - 10, 20, 20)
+        
+        # Obtener la sala actual
+        room = self.dungeon.get_room()
+        
+        # Verificar colisión con paredes
+        for wall in room.walls():
+            if pickup_rect.colliderect(wall):
+                return False
+                
+        # Verificar colisión con obstáculos
+        for obstacle in room.obstacles():
+            if pickup_rect.colliderect(obstacle):
+                return False
+                
+        # Verificar colisión con otros pickups
+        for pickup in self.pickups:
+            if pickup_rect.colliderect(pickup.rect()):
+                return False
+                
+        # Verificar colisión con el jugador
+        if pickup_rect.colliderect(self.player.rect):
+            return False
+            
+        return True
+
+    def _find_valid_pickup_position(self, center_x: int, center_y: int, max_attempts: int = 10) -> tuple[int, int] | None:
+        """Intenta encontrar una posición válida para un pickup cerca de las coordenadas dadas."""
+        for _ in range(max_attempts):
+            # Intentar posiciones en un radio creciente
+            for radius in range(0, 200, 20):  # Aumenta el radio en pasos de 20 píxeles
+                for angle in range(0, 360, 45):  # Prueba en diferentes ángulos
+                    rad = math.radians(angle)
+                    x = int(center_x + radius * math.cos(rad))
+                    y = int(center_y + radius * math.sin(rad))
+                    
+                    # Verificar si la posición es válida
+                    if self._is_valid_pickup_position(x, y):
+                        return x, y
+        return None
+
     def _on_enemy_killed(self, enemy: Enemy) -> None:
         # Aumentar puntuación por matar enemigo
         self.score += 100
         # Probabilidad configurada de botín
         if random.random() < self._loot_chance:
-            # Selección ponderada por LOOT_WEIGHTS
-            r = random.random()
-            accum = 0.0
-            kind = 'arrow'
-            for k, w in LOOT_WEIGHTS.items():
-                accum += w
-                if r <= accum:
-                    kind = k
-                    break
-            cx, cy = enemy.rect.center
-            self.pickups.append(Pickup(kind, cx, cy))
+            # Pequeña probabilidad de soltar un ítem (20%)
+            if random.random() < 0.2:
+                # 50% de probabilidad de flechas, 50% de bombas
+                kind = 'arrow' if random.random() < 0.5 else 'bomb'
+                
+                # Intentar encontrar una posición válida cerca del enemigo
+                valid_pos = self._find_valid_pickup_position(enemy.rect.centerx, enemy.rect.centery)
+                if valid_pos:
+                    self.pickups.append(Pickup(kind, valid_pos[0], valid_pos[1]))
         # Agregar flash breve (0.15s)
         self.kill_flashes.append((enemy.rect.copy(), 0.15))
 
@@ -1039,6 +1103,8 @@ class PlayScene(Scene):
             if p.rect().colliderect(self.player.rect):
                 if p.kind == 'bomb':
                     self.inventory.add('bomb')
+                    # Aumentar puntuación por recoger bombas
+                    self.score += 20
                 elif p.kind == 'key':
                     self.inventory.add('key')
                 elif p.kind == 'magic':
@@ -1046,7 +1112,8 @@ class PlayScene(Scene):
                 elif p.kind == 'arrow':
                     self.inventory.add('arrow', 5)
                     # Aumentar puntuación por recoger flechas
-                    self.score += 10
+                    self.score += 20
+                    
                 if self.snd_pickup:
                     self.snd_pickup.play()
             else:
@@ -1074,7 +1141,7 @@ class PlayScene(Scene):
                             self.player.apply_speed_boots(1.5)  # 50% más velocidad
                             self.special_items.append(boots)
                             self.has_speed_boots = True
-                            
+                                
                     elif item_type == 'companion':
                         if not self.has_companion:
                             # Solo crear compañero si no tiene uno
@@ -1085,24 +1152,28 @@ class PlayScene(Scene):
                             self.has_companion = True
                         else:
                             print("Ya tienes un compañero. No se puede tener más de uno.")
-                            
+                                
                     elif item_type == 'health_doubler':
                         if not self.has_health_doubler:
-                            # Solo aplicar si no lo ha usado antes
+                            # Solo duplicar la salud máxima si no lo ha hecho ya
                             health_doubler = HealthDoubler(chest.rect.centerx, chest.rect.centery - 30)
                             health_doubler.apply_effect(self.player)
+                            self.special_items.append(health_doubler)
                             self.has_health_doubler = True
-                        else:
-                            print("El doblador de vida ya fue usado. No tiene más efecto.")
-                    
+                                
                     # Aumentar puntuación por abrir cofre
                     self.score += 50
                     
                     if self.snd_pickup:
                         self.snd_pickup.play()
                     
-                    # Mostrar mensaje de qué item se obtuvo
-                    print(f"¡Obtenido: {item_type}!")
+                    elif item_type == 'infinite_shot':
+                        # Crear y aplicar el efecto de disparo infinito
+                        infinite_shot = InfiniteShotPickup(chest.rect.centerx, chest.rect.centery - 30)
+                        infinite_shot.apply_effect(self.player)
+                        # No es necesario rastrear este ítem como los demás, ya que es temporal
+                        self.score += 50  # Puntos adicionales por recoger disparo infinito
+                        print(f"¡Obtenido: {item_type}!")
                 break
 
     # ---------- Dungeon helpers ----------
