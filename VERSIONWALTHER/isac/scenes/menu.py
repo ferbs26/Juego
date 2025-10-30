@@ -23,7 +23,7 @@ class MenuScene(Scene):
         pass
 
     def draw(self, surface: pygame.Surface) -> None:
-        title = self.font.render("Isac", True, WHITE)
+        title = self.font.render("Block Maze", True, WHITE)
         hint = self.small.render("Enter/Espacio: Jugar  |  Esc: Salir", True, BLUE)
         surface.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 2 - 60))
         surface.blit(hint, (WIDTH // 2 - hint.get_width() // 2, HEIGHT // 2 + 10))

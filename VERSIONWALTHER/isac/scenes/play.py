@@ -1319,21 +1319,56 @@ class PlayScene(Scene):
             pygame.draw.rect(surface, (110, 110, 110), obs)
         # puertas
         for d in ('up', 'down', 'left', 'right'):
-            door_rect = room.door_rect(d)
             door = room.doors[d]
-            # Color base por estado
-            base_color = (80, 200, 120) if door.open else ((200, 160, 40) if door.locked else (160, 160, 160))
-            color = base_color
-            # Pulso de color cuando se acaban de abrir
-            if door.open and self.door_feedback_timer > 0:
-                # Intensidad de 0..1
-                t = self.door_feedback_timer
-                intensity = t  # lineal simple
-                r = min(255, int(base_color[0] + 60 * intensity))
-                g = min(255, int(base_color[1] + 40 * intensity))
-                b = min(255, int(base_color[2] + 40 * intensity))
-                color = (r, g, b)
-            pygame.draw.rect(surface, color, door_rect)
+            # Saltar puertas que no existen (no llevan a ninguna habitación)
+            if not door.exists:
+                continue
+                
+            door_rect = room.door_rect(d)
+            
+            # Cargar el sprite de la puerta según la dirección y estado (abierta/cerrada)
+            try:
+                base_path = 'assets/structure/'
+                if door.open:
+                    # Usar sprites door1 cuando está abierta
+                    if d == 'up':
+                        door_img = pygame.image.load(f'{base_path}door1.png').convert_alpha()
+                    elif d == 'down':
+                        door_img = pygame.image.load(f'{base_path}door1down.png').convert_alpha()
+                    elif d == 'left':
+                        door_img = pygame.image.load(f'{base_path}door1left.png').convert_alpha()
+                    else:  # right
+                        door_img = pygame.image.load(f'{base_path}door1right.png').convert_alpha()
+                else:
+                    # Usar sprites door2 cuando está cerrada
+                    if d == 'up':
+                        door_img = pygame.image.load(f'{base_path}door2.png').convert_alpha()
+                    elif d == 'down':
+                        door_img = pygame.image.load(f'{base_path}door2down.png').convert_alpha()
+                    elif d == 'left':
+                        door_img = pygame.image.load(f'{base_path}door2left.png').convert_alpha()
+                    else:  # right
+                        door_img = pygame.image.load(f'{base_path}door2right.png').convert_alpha()
+                
+                # Escalar la imagen al tamaño del rectángulo de la puerta
+                door_img = pygame.transform.scale(door_img, (door_rect.width, door_rect.height))
+                
+                # Dibujar la puerta
+                surface.blit(door_img, door_rect)
+                
+            except Exception as e:
+                # En caso de error, volver al método de dibujo original
+                print(f"Error cargando sprite de puerta: {e}")
+                base_color = (80, 200, 120) if door.open else ((200, 160, 40) if door.locked else (160, 160, 160))
+                color = base_color
+                if door.open and self.door_feedback_timer > 0:
+                    t = self.door_feedback_timer
+                    intensity = t
+                    r = min(255, int(base_color[0] + 60 * intensity))
+                    g = min(255, int(base_color[1] + 40 * intensity))
+                    b = min(255, int(base_color[2] + 40 * intensity))
+                    color = (r, g, b)
+                pygame.draw.rect(surface, color, door_rect)
 
     def handle_doors_transition(self) -> None:
         room = self.dungeon.get_room()

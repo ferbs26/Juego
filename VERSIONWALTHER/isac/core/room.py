@@ -402,16 +402,16 @@ class Room:
 
     def door_rect(self, direction: str) -> pygame.Rect:
         p = ROOM_PADDING
-        w = 60
-        h = 20
+        w = 240  # 60 * 4
+        h = 80   # 20 * 4
         if direction == 'up':
-            return pygame.Rect(WIDTH // 2 - w // 2, p - 5, w, h)
+            return pygame.Rect(WIDTH // 2 - w // 2, p - 10, w, h)
         if direction == 'down':
-            return pygame.Rect(WIDTH // 2 - w // 2, HEIGHT - p - h + 5, w, h)
+            return pygame.Rect(WIDTH // 2 - w // 2, HEIGHT - p - h + 10, w, h)
         if direction == 'left':
-            return pygame.Rect(p - 5, HEIGHT // 2 - w // 2, h, w)
+            return pygame.Rect(p - 10, HEIGHT // 2 - w // 2, h, w)
         if direction == 'right':
-            return pygame.Rect(WIDTH - p - h + 5, HEIGHT // 2 - w // 2, h, w)
+            return pygame.Rect(WIDTH - p - h + 10, HEIGHT // 2 - w // 2, h, w)
         return pygame.Rect(0, 0, 0, 0)
 
     def neighbors(self) -> Dict[str, Tuple[int, int]]:
