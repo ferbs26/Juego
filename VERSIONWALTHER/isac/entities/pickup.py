@@ -16,13 +16,13 @@ class Pickup:
         # Cargar imágenes solo una vez
         if not self._images:
             try:
-                # Cargar imagen de bomba
+                # Cargar imagen de bomba (tamaño duplicado)
                 bomb_img = pygame.image.load(os.path.join('assets', 'player', 'bomba.png')).convert_alpha()
-                self._images['bomb'] = pygame.transform.scale(bomb_img, (20, 20))
+                self._images['bomb'] = pygame.transform.scale(bomb_img, (40, 40))
                 
-                # Cargar imagen de llave
+                # Cargar imagen de llave (tamaño duplicado)
                 key_img = pygame.image.load(os.path.join('assets', 'player', 'llave.png')).convert_alpha()
-                self._images['key'] = pygame.transform.scale(key_img, (20, 20))
+                self._images['key'] = pygame.transform.scale(key_img, (40, 40))
                 
                 # Para otros tipos, mantener el comportamiento original con colores
                 self._images['magic'] = None
@@ -33,7 +33,8 @@ class Pickup:
                 self._images = {}
 
     def rect(self) -> pygame.Rect:
-        return pygame.Rect(self.x - 10, self.y - 10, 20, 20)
+        # Hitbox duplicada para coincidir con los nuevos tamaños
+        return pygame.Rect(self.x - 20, self.y - 20, 40, 40)
 
     def draw(self, surface: pygame.Surface) -> None:
         if self.kind in self._images and self._images[self.kind] is not None:

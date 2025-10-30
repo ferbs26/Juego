@@ -48,6 +48,7 @@ from isac.core.map import MapViewer
 from isac.entities.arrow import Arrow
 from isac.entities.chest import Chest
 from isac.entities.speed_boots import SpeedBoots
+from isac.entities.infinite_shot import InfiniteShotPickup
 from isac.entities.companion import Companion, Spike
 from isac.entities.health_doubler import HealthDoubler
 
@@ -196,17 +197,8 @@ class PlayScene(Scene):
         self.kill_flashes: list[tuple[pygame.Rect, float]] = []
 
     def _spawn_enemy(self, x: int, y: int) -> Enemy:
-        # Elegir tipo según pesos
-        r = random.random()
-        accum = 0.0
-        choice_key = next(iter(ENEMY_TYPES))
-        total_w = sum(max(0.0, t.get('weight', 1.0)) for t in ENEMY_TYPES.values())
-        for name, data in ENEMY_TYPES.items():
-            w = max(0.0, data.get('weight', 1.0))
-            accum += w / (total_w if total_w > 0 else 1.0)
-            if r <= accum:
-                choice_key = name
-                break
+        # Elegir tipo de enemigo al azar con igual probabilidad
+        choice_key = random.choice(list(ENEMY_TYPES.keys()))
         cfg = ENEMY_TYPES[choice_key]
         # Aplicar escala de dificultad a HP y velocidad
         hp = int(max(1, round(cfg.get('hp', 2) * self._diff_preset.get('enemy_hp_scale', 1.0))))
@@ -220,21 +212,87 @@ class PlayScene(Scene):
             kind=choice_key,
         )
 
+    def _is_position_valid(self, x: int, y: int, width: int = TILE, height: int = TILE) -> bool:
+        """Verifica si una posición es válida para colocar un objeto (no dentro de paredes o obstáculos)."""
+        room = self.dungeon.get_room()
+        obj_rect = pygame.Rect(0, 0, width, height)
+        obj_rect.center = (x, y)
+        
+        # Verificar colisión con paredes
+        for wall in room.walls():
+            if obj_rect.colliderect(wall):
+                return False
+                
+        # Verificar colisión con obstáculos
+        for obstacle in room.obstacles():
+            if obj_rect.colliderect(obstacle):
+                return False
+        
+        # Verificar colisión con puertas (solo si door es un objeto con atributo rect)
+        for door in room.doors:
+            if hasattr(door, 'rect') and door.rect and obj_rect.colliderect(door.rect):
+                return False
+                
+        # Asegurarse de que esté dentro de los límites de la habitación
+        room_rect = pygame.Rect(0, 0, WIDTH, HEIGHT)
+        if not room_rect.contains(obj_rect):
+            return False
+                
+        return True
+        
+    def _find_valid_position(self, x: int, y: int, width: int = TILE, height: int = TILE, max_attempts: int = 50) -> tuple[int, int]:
+        """
+        Intenta encontrar una posición válida cerca de las coordenadas dadas.
+        Busca en un patrón de espiral hacia afuera desde la posición original.
+        """
+        if self._is_position_valid(x, y, width, height):
+            return (x, y)
+            
+        # Si la posición inicial no es válida, buscar en un patrón de espiral
+        step = TILE
+        direction = 1  # 1 = derecha/abajo, -1 = izquierda/arriba
+        steps_in_direction = 1
+        directions = [(1, 0), (0, 1), (-1, 0), (0, -1)]  # derecha, abajo, izquierda, arriba
+        current_dir = 0
+        attempts = 0
+        
+        # Variables para el patrón de espiral
+        spiral_x, spiral_y = x, y
+        
+        while attempts < max_attempts:
+            # Mover en la dirección actual
+            dx, dy = directions[current_dir]
+            spiral_x += dx * step
+            spiral_y += dy * step
+            
+            # Asegurarse de que esté dentro de los límites de la pantalla
+            spiral_x = max(width // 2, min(WIDTH - width // 2, spiral_x))
+            spiral_y = max(height // 2, min(HEIGHT - height // 2, spiral_y))
+            
+            # Verificar si la posición es válida
+            if self._is_position_valid(spiral_x, spiral_y, width, height):
+                return (spiral_x, spiral_y)
+                
+            # Cambiar de dirección si es necesario
+            steps_in_direction -= 1
+            if steps_in_direction == 0:
+                current_dir = (current_dir + 1) % 4
+                if current_dir % 2 == 0:  # Cada 2 cambios de dirección, aumentar el paso
+                    step += TILE // 2
+                steps_in_direction = step // TILE
+                
+            attempts += 1
+        
+        # Si no se encuentra una posición válida, devolver una posición segura
+        return (WIDTH // 2, HEIGHT // 2)  # Centro de la habitación
+
     def _enter_room(self, initial: bool = False) -> None:
         room = self.dungeon.get_room()
         obstacles = room.obstacles()
 
         # Helper: comprobar espacio libre para un enemigo
         def enemy_place_free(x: int, y: int) -> bool:
-            rect = pygame.Rect(0, 0, ENEMY_SIZE, ENEMY_SIZE)
-            rect.center = (x, y)
-            for w in room.walls():
-                if rect.colliderect(w):
-                    return False
-            for o in obstacles:
-                if rect.colliderect(o):
-                    return False
-            return True
+            return self._is_position_valid(x, y, ENEMY_SIZE, ENEMY_SIZE)
 
         # Buscar celda libre cercana en cuadrícula de TILE
         def nearest_free(x: int, y: int) -> tuple[int, int]:
@@ -259,11 +317,15 @@ class PlayScene(Scene):
             
             # Generar cofre con alta probabilidad (85% de probabilidad)
             if random.random() < 0.85:
-                chest_x = WIDTH // 2 + random.randint(-120, 120)
-                chest_y = HEIGHT // 2 + random.randint(-100, 100)
-                if enemy_place_free(chest_x, chest_y):
-                    chest = Chest(chest_x, chest_y)
-                    room.chests.append(chest)
+                # Intentar varias posiciones aleatorias hasta encontrar una válida
+                max_attempts = 10
+                for _ in range(max_attempts):
+                    chest_x = WIDTH // 2 + random.randint(-120, 120)
+                    chest_y = HEIGHT // 2 + random.randint(-100, 100)
+                    if self._is_position_valid(chest_x, chest_y, TILE, TILE):
+                        chest = Chest(chest_x, chest_y)
+                        room.chests.append(chest)
+                        break
             
             # Calcular número de enemigos basado en la dificultad
             if self.difficulty == "Normal":
@@ -433,30 +495,42 @@ class PlayScene(Scene):
                 save_game(self._save_path, self.player, self.inventory, self.dungeon)
             elif event.key == pygame.K_F9:
                 load_game(self._save_path, self.player, self.inventory, self.dungeon)
-            # Disparar flecha (arco) con L
+                # Disparar flecha (arco) con L
             elif event.key == pygame.K_l:
-                # Siempre permite disparar flechas infinitamente
-                dx = dy = 0
-                if self.player.facing == 'up':
-                    dy = -1
-                elif self.player.facing == 'down':
-                    dy = 1
-                elif self.player.facing == 'left':
-                    dx = -1
-                elif self.player.facing == 'right':
-                    dx = 1
-                if dx != 0 or dy != 0:
-                    self.arrows.append(Arrow(self.player.rect.centerx, self.player.rect.centery, dx, dy))
-                    if self.snd_arrow_shoot:
-                        self.snd_arrow_shoot.play()
-                        # Mantenemos el sonido especial para disparos infinitos si se desea
-                        if self.player.infinite_shots and self.snd_pickup:
-                            self.snd_arrow_shoot.set_volume(0.7)
-                            self.snd_arrow_shoot.play()
+                # Marcar que el jugador quiere disparar
+                self.player.set_shooting(True)
+                # Intentar disparar inmediatamente
+                self._try_shoot()
         elif event.type == pygame.KEYUP:
             # Soltar escudo cuando se suelta K
             if event.key == pygame.K_k:
                 self.player.shield = False
+            # Dejar de disparar cuando se suelta L
+            elif event.key == pygame.K_l:
+                self.player.set_shooting(False)
+
+    def _try_shoot(self) -> None:
+        """Intenta disparar una flecha si es posible."""
+        if self.player.can_shoot():
+            dx = dy = 0
+            if self.player.facing == 'up':
+                dy = -1
+            elif self.player.facing == 'down':
+                dy = 1
+            elif self.player.facing == 'left':
+                dx = -1
+            elif self.player.facing == 'right':
+                dx = 1
+            if dx != 0 or dy != 0:
+                self.arrows.append(Arrow(self.player.rect.centerx, self.player.rect.centery, dx, dy))
+                # Iniciar cooldown de disparo
+                self.player.start_shoot_cooldown()
+                if self.snd_arrow_shoot:
+                    self.snd_arrow_shoot.play()
+                    # Mantenemos el sonido especial para disparos infinitos si se desea
+                    if self.player.infinite_shots and self.snd_pickup:
+                        self.snd_arrow_shoot.set_volume(0.7)
+                        self.snd_arrow_shoot.play()
 
     def _calculate_spawn_position(self, room) -> tuple[int, int]:
         """Calculate a valid spawn position for the player in the current room."""
@@ -514,6 +588,10 @@ class PlayScene(Scene):
         # Intentar abrir cofres automáticamente al acercarse
         self.try_open_chest()
 
+        # Intentar disparar si el jugador está manteniendo el botón
+        if self.player.wants_to_shoot:
+            self._try_shoot()
+            
         # Actualizar flechas y colisiones
         for a in self.arrows:
             a.update(dt)
@@ -1085,10 +1163,16 @@ class PlayScene(Scene):
         self.score += 100
         # Probabilidad configurada de botín
         if random.random() < self._loot_chance:
-            # Pequeña probabilidad de soltar un ítem (20%)
-            if random.random() < 0.2:
-                # 50% de probabilidad de flechas, 50% de bombas
-                kind = 'arrow' if random.random() < 0.5 else 'bomb'
+            # 75% de probabilidad de soltar un ítem
+            if random.random() < 0.75:
+                # Distribución de probabilidad: 33.3% flechas, 33.3% bombas, 33.3% llaves
+                rand_val = random.random()
+                if rand_val < 0.333:
+                    kind = 'arrow'
+                elif rand_val < 0.666:
+                    kind = 'bomb'
+                else:
+                    kind = 'key'
                 
                 # Intentar encontrar una posición válida cerca del enemigo
                 valid_pos = self._find_valid_pickup_position(enemy.rect.centerx, enemy.rect.centery)

@@ -79,8 +79,21 @@ DIFFICULTY_PRESETS = {
     },
 }
 
-WIDTH = 800
-HEIGHT = 600
+# Get the screen dimensions
+import pygame
+pygame.init()
+info = pygame.display.Info()
+SCREEN_WIDTH = info.current_w
+SCREEN_HEIGHT = info.current_h
+
+# Set game dimensions to 80% of screen size for better visibility
+WIDTH = int(SCREEN_WIDTH * 0.9)
+HEIGHT = int(SCREEN_HEIGHT * 0.9)
+
+# Ensure minimum size for playability
+WIDTH = max(WIDTH, 800)
+HEIGHT = max(HEIGHT, 600)
+
 FPS = 60
 TITLE = "Isac"
 
@@ -99,11 +112,11 @@ PLAYER_SPEED = 250
 BULLET_SPEED = 500
 ENEMY_SPEED = 140
 
-PLAYER_SIZE = 40
-ENEMY_SIZE = 36
-BULLET_RADIUS = 6
+PLAYER_SIZE = 40  # Player size remains the same
+ENEMY_SIZE = 72  # Doubled from 36
+BULLET_RADIUS = 6  # Original size (was 12, which was double the original)
 ARROW_SPEED = 520
-ARROW_SIZE = 8
+ARROW_SIZE = 32  # Doubled from 16 (originally 8)
 ARROW_DAMAGE = 1
 
 PLAYER_MAX_HP = 10
@@ -117,7 +130,7 @@ MELEE_COOLDOWN = 0.35
 MELEE_RANGE = 22
 MELEE_DAMAGE = 1
 SHIELD_MAGIC_COST_PER_SEC = 25  # gastar magia por segundo al mantener escudo
-HUD_HEART_SIZE = 16
+HUD_HEART_SIZE = 32  # Doubled from 16 to match other size increases
 
 # --- CONFIGURACIÓN DE SPRITES DE VIDA (NUEVO) ---
 # Diccionario que mapea la HP actual a la ruta del sprite.
@@ -137,7 +150,7 @@ HUD_HP_SPRITES = {
 # ---------------------------------------------------
 
 # Dungeon / Rooms
-TILE = 32
+TILE = 64  # Doubled from 32 to maintain proportions with larger sprites
 ROOM_PADDING = 48  # margen interior donde situamos paredes
 
 # Diseño de sala / obstáculos (parametrizable)

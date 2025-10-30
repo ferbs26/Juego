@@ -28,16 +28,27 @@ class Enemy:
         # Estado para monster
         self._monster_shoot_timer: float = 0.0  # temporizador para disparos del monster
         
-        # Cargar sprite de proyectil para sniper
+        # Cargar sprites de proyectiles
         self.projectile_sprite = None
+        self.monster_projectile_sprite = None
+        
         try:
+            # Sprite para sniper
             projectile_path = os.path.join('assets', 'enemies', 'Estrellacaida1.png')
             if os.path.exists(projectile_path):
                 self.projectile_sprite = pygame.image.load(projectile_path).convert_alpha()
                 # Escalar el sprite al doble del tamaño original
                 self.projectile_sprite = pygame.transform.scale(self.projectile_sprite, (32, 32))
+                
+            # Sprite para monster
+            monster_projectile_path = 'C:/Users/herna/OneDrive/Documentos/GitHub/VERSIONWALTHER/assets/bullet/monstershoot.png'
+            if os.path.exists(monster_projectile_path):
+                self.monster_projectile_sprite = pygame.image.load(monster_projectile_path).convert_alpha()
+                # Escalar el sprite a un tamaño apropiado (ajustar según sea necesario)
+                self.monster_projectile_sprite = pygame.transform.scale(self.monster_projectile_sprite, (32, 32))
+                
         except Exception as e:
-            print(f"Error loading projectile sprite: {e}")
+            print(f"Error loading projectile sprites: {e}")
         
         # Inicializar diccionario de sprites y cargarlos
         self.sprites = {}
@@ -59,13 +70,14 @@ class Enemy:
                 (ENEMY_SIZE, ENEMY_SIZE)
             )
             
-            # Cargar sprite para sniper (usando la nube)
+            # Cargar sprite para sniper
             try:
                 self.sprites['sniper'] = pygame.transform.scale(
-                    pygame.image.load('assets/enemies/cloud.png').convert_alpha(),
+                    pygame.image.load('C:/Users/herna/OneDrive/Documentos/GitHub/VERSIONWALTHER/assets/enemies/snipper.png').convert_alpha(),
                     (ENEMY_SIZE, ENEMY_SIZE)
                 )
-            except:
+            except Exception as e:
+                print(f"Error al cargar el sprite del sniper: {e}")
                 # Si falla la carga, usar un sprite existente
                 self.sprites['sniper'] = self.sprites['grunt'].copy()
                 
@@ -191,11 +203,23 @@ class Enemy:
     def draw_projectiles(self, surface: pygame.Surface):
         """Dibuja los proyectiles del enemigo"""
         for proj in self._projectiles:
-            if self.projectile_sprite and self.kind == 'sniper':
+            if self.kind == 'sniper' and self.projectile_sprite:
                 # Dibujar el sprite del proyectil rotado en la dirección del movimiento
                 angle = math.degrees(math.atan2(proj['dy'], proj['dx'])) - 90
                 rotated_sprite = pygame.transform.rotate(self.projectile_sprite, -angle)
                 sprite_rect = rotated_sprite.get_rect(center=(int(proj['x']), int(proj['y'])))
+                surface.blit(rotated_sprite, sprite_rect)
+            elif self.kind == 'monster' and self.monster_projectile_sprite:
+                # Calcular el ángulo de rotación basado en la dirección del movimiento
+                angle = math.degrees(math.atan2(proj['dy'], proj['dx']))
+                # Ajustar el ángulo para que el sprite apunte en la dirección correcta
+                # (sumar 90 grados para que la punta del sprite apunte hacia adelante)
+                angle += 90
+                # Rotar el sprite
+                rotated_sprite = pygame.transform.rotate(self.monster_projectile_sprite, -angle)
+                # Obtener el rectángulo del sprite rotado y centrarlo en la posición del proyectil
+                sprite_rect = rotated_sprite.get_rect(center=(int(proj['x']), int(proj['y'])))
+                # Dibujar el sprite rotado
                 surface.blit(rotated_sprite, sprite_rect)
             else:
                 # Dibujar círculo como respaldo si no hay sprite

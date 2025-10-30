@@ -42,4 +42,3 @@ class Game:
             # Flip
             pygame.display.flip()
 
-        pygame.quit()

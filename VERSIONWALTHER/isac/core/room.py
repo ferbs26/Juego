@@ -255,29 +255,54 @@ def _generate_random_base_pattern(size: int = ROOM_SIZE) -> List[str]:
 
 # --- Función Auxiliar para insertar puertas (sin cambios) ---
 
-def _insert_doors(pattern: List[str], pos: Tuple[int, int]) -> List[str]:
-    """Modifica el patrón base para insertar las aperturas de puerta 'D'."""
-    gx, gy = pos
+def _insert_doors(pattern: List[str], room: 'Room') -> List[str]:
+    """
+    Modifica el patrón base para insertar las aperturas de puerta 'D'.
+    Si una puerta no existe (no lleva a ninguna habitación), se reemplaza con paredes.
+    """
+    gx, gy = room.pos
     modified_pattern = list(pattern)
-    map_size = len(modified_pattern) # Debería ser 18
+    map_size = len(modified_pattern)  # Debería ser 18
 
     # Puerta ARRIBA (up): gy - 1, fila 0 (4 caracteres centrales)
-    row_up = modified_pattern[0]
-    modified_pattern[0] = row_up[:7] + "DDDD" + row_up[11:]
+    if 'up' in room.doors and room.doors['up'].exists:
+        row_up = modified_pattern[0]
+        modified_pattern[0] = row_up[:7] + "DDDD" + row_up[11:]
+    else:
+        # Reemplazar con pared si la puerta no existe
+        row_up = modified_pattern[0]
+        modified_pattern[0] = row_up[:7] + "####" + row_up[11:]
         
     # Puerta ABAJO (down): gy + 1, fila 17 (4 caracteres centrales)
-    row_down = modified_pattern[map_size - 1]
-    modified_pattern[map_size - 1] = row_down[:7] + "DDDD" + row_down[11:]
+    if 'down' in room.doors and room.doors['down'].exists:
+        row_down = modified_pattern[map_size - 1]
+        modified_pattern[map_size - 1] = row_down[:7] + "DDDD" + row_down[11:]
+    else:
+        # Reemplazar con pared si la puerta no existe
+        row_down = modified_pattern[map_size - 1]
+        modified_pattern[map_size - 1] = row_down[:7] + "####" + row_down[11:]
 
     # Puerta IZQUIERDA (left): gx - 1, filas 7 a 10 (primer caracter)
-    for i in range(7, 11): 
-        row_left = modified_pattern[i]
-        modified_pattern[i] = "D" + row_left[1:]
+    if 'left' in room.doors and room.doors['left'].exists:
+        for i in range(7, 11):
+            row_left = modified_pattern[i]
+            modified_pattern[i] = "D" + row_left[1:]
+    else:
+        # Reemplazar con pared si la puerta no existe
+        for i in range(7, 11):
+            row_left = modified_pattern[i]
+            modified_pattern[i] = "#" + row_left[1:]
 
     # Puerta DERECHA (right): gx + 1, filas 7 a 10 (último caracter)
-    for i in range(7, 11): 
-        row_right = modified_pattern[i]
-        modified_pattern[i] = row_right[:-1] + "D"
+    if 'right' in room.doors and room.doors['right'].exists:
+        for i in range(7, 11):
+            row_right = modified_pattern[i]
+            modified_pattern[i] = row_right[:-1] + "D"
+    else:
+        # Reemplazar con pared si la puerta no existe
+        for i in range(7, 11):
+            row_right = modified_pattern[i]
+            modified_pattern[i] = row_right[:-1] + "#"
 
     return modified_pattern
 
@@ -287,6 +312,7 @@ def _insert_doors(pattern: List[str], pos: Tuple[int, int]) -> List[str]:
 class Door:
     open: bool = False
     locked: bool = False
+    exists: bool = True  # Indica si la puerta existe (si hay una habitación del otro lado)
 
 
 @dataclass
@@ -306,6 +332,10 @@ class Room:
 
     def __post_init__(self):
         self._room_pattern = self._generate_random_room_pattern()
+        # Ensure _room_pattern is always a valid list of strings
+        if not isinstance(self._room_pattern, list) or not all(isinstance(row, str) for row in self._room_pattern):
+            # Fallback to an empty room pattern if generation fails
+            self._room_pattern = ["#" * ROOM_SIZE] * ROOM_size
 
 
     def walls(self) -> List[pygame.Rect]:
@@ -327,12 +357,16 @@ class Room:
             # Ahora utiliza la generación geométrica restringida y regeneración
             base_pattern = _generate_random_base_pattern(ROOM_SIZE)
             
-        final_pattern = _insert_doors(base_pattern, self.pos)
+        # Pasar la instancia de la habitación para verificar las puertas existentes
+        final_pattern = _insert_doors(base_pattern, self)
         
         return final_pattern
 
 
     def get_room_map(self) -> List[str]:
+        # Ensure we always return a valid list of strings
+        if not hasattr(self, '_room_pattern') or self._room_pattern is None:
+            self._room_pattern = self._generate_random_room_pattern()
         return self._room_pattern
 
     def obstacles(self) -> List[pygame.Rect]:

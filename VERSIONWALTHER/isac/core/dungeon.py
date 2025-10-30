@@ -53,6 +53,10 @@ class Dungeon:
                     if other.exists:
                         other.open = door.open
                         other.locked = door.locked
+                        
+        # Forzar actualización de los patrones de las habitaciones
+        for room in self.rooms.values():
+            room._room_pattern = None  # Forzar regeneración del patrón
 
     def get_room(self) -> Room:
         return self.rooms[self.current]
