@@ -73,7 +73,15 @@ class Spike:
 
 class Companion:
     def __init__(self, x: int, y: int):
-        self.rect = pygame.Rect(x, y, TILE // 2, TILE // 2)
+        # Cargar el sprite de la estatua
+        self.sprite = pygame.image.load('C:/Users/herna/OneDrive/Documentos/GitHub/VERSIONWALTHER/assets/player/statue.png').convert_alpha()
+        
+        # Escalar el sprite a 32x32 píxeles
+        sprite_size = (32, 32)  # Tamaño fijo de 32x32 píxeles
+        self.sprite = pygame.transform.scale(self.sprite, sprite_size)
+        
+        # Crear el rectángulo de colisión
+        self.rect = self.sprite.get_rect()
         self.rect.center = (x, y)
         self.collected = False
         self.active = False
@@ -87,8 +95,6 @@ class Companion:
         self.duration = 10.0  # 10 segundos de duración
         self.time_remaining = 10.0
         
-        # Animación
-        self.tail_angle = 0.0       
         # Animación
         self.bob_timer = 0.0
         self.original_y = y
@@ -203,73 +209,26 @@ class Companion:
         return nearest_enemy
     
     def draw(self, surface: pygame.Surface):
-        """Dibuja el compañero perrito"""
+        """Dibuja el compañero usando el sprite de estatua"""
         if self.collected and not self.active:
             return
             
-        # Colores del perrito
-        body_color = (139, 69, 19)    # Marrón
-        ear_color = (101, 67, 33)     # Marrón más oscuro
-        nose_color = (0, 0, 0)        # Negro
-        tongue_color = (255, 182, 193) # Rosa
-        
-        # Cuerpo principal (óvalo)
-        body_rect = pygame.Rect(self.rect.x, self.rect.y + 4, self.rect.width, self.rect.height - 4)
-        pygame.draw.ellipse(surface, body_color, body_rect)
-        
-        # Cabeza (círculo más pequeño)
-        head_size = int(self.rect.width * 0.7)
-        head_rect = pygame.Rect(self.rect.centerx - head_size//2, self.rect.y, head_size, head_size)
-        pygame.draw.ellipse(surface, body_color, head_rect)
-        
-        # Orejas (triángulos caídos)
-        ear_size = 6
-        left_ear_points = [
-            (head_rect.left + 3, head_rect.top + 2),
-            (head_rect.left - 2, head_rect.top + 8),
-            (head_rect.left + 8, head_rect.top + 6)
-        ]
-        right_ear_points = [
-            (head_rect.right - 3, head_rect.top + 2),
-            (head_rect.right + 2, head_rect.top + 8),
-            (head_rect.right - 8, head_rect.top + 6)
-        ]
-        pygame.draw.polygon(surface, ear_color, left_ear_points)
-        pygame.draw.polygon(surface, ear_color, right_ear_points)
-        
-        # Ojos (más grandes y expresivos)
-        eye_size = 4
-        left_eye = pygame.Rect(head_rect.centerx - 6, head_rect.centery - 2, eye_size, eye_size)
-        right_eye = pygame.Rect(head_rect.centerx + 2, head_rect.centery - 2, eye_size, eye_size)
-        pygame.draw.ellipse(surface, (255, 255, 255), left_eye)
-        pygame.draw.ellipse(surface, (255, 255, 255), right_eye)
-        
-        # Pupilas
-        pygame.draw.circle(surface, (0, 0, 0), left_eye.center, 2)
-        pygame.draw.circle(surface, (0, 0, 0), right_eye.center, 2)
-        
-        # Nariz (triángulo pequeño)
-        nose_points = [
-            (head_rect.centerx, head_rect.centery + 2),
-            (head_rect.centerx - 2, head_rect.centery + 5),
-            (head_rect.centerx + 2, head_rect.centery + 5)
-        ]
-        pygame.draw.polygon(surface, nose_color, nose_points)
-        
-        # Lengua (pequeña línea rosa)
-        tongue_rect = pygame.Rect(head_rect.centerx - 1, head_rect.centery + 5, 2, 3)
-        pygame.draw.rect(surface, tongue_color, tongue_rect)
-        
-        # Cola (pequeña línea que se mueve)
-        tail_offset = int(math.sin(self.bob_timer * 3) * 2)
-        tail_start = (body_rect.right - 2, body_rect.centery)
-        tail_end = (body_rect.right + 4 + tail_offset, body_rect.centery - 2)
-        pygame.draw.line(surface, ear_color, tail_start, tail_end, 2)
+        # Dibujar el sprite de la estatua
+        if hasattr(self, 'sprite'):
+            # Aplicar animación de flotación
+            bob_offset = math.sin(self.bob_timer * 2) * 3
+            draw_pos = self.rect.copy()
+            draw_pos.y += bob_offset
+            
+            # Dibujar el sprite centrado en la posición del rectángulo
+            sprite_rect = self.sprite.get_rect(center=self.rect.center)
+            sprite_rect.y += bob_offset
+            surface.blit(self.sprite, sprite_rect)
         
         # Indicador de rango de detección (solo si está activo)
         if self.active and self.can_shoot():
             range_surface = pygame.Surface((self.detection_range * 2, self.detection_range * 2), pygame.SRCALPHA)
-            range_color = (139, 69, 19, 30)  # Marrón translúcido
+            range_color = (135, 206, 235, 30)  # Azul claro (#87CEEB) translúcido
             pygame.draw.circle(range_surface, range_color, 
                              (self.detection_range, self.detection_range), self.detection_range)
             surface.blit(range_surface, 

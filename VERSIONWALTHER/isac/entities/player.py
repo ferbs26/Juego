@@ -41,6 +41,11 @@ class Player:
         
         # Disparo infinito (desactivado por defecto)
         self.infinite_shots = False
+        
+        # Control de velocidad de disparo
+        self.shoot_cooldown = 0.0
+        self.SHOOT_COOLDOWN_TIME = 0.3  # segundos entre disparos
+        self.wants_to_shoot = False  # Indica si el jugador está manteniendo presionado el botón de disparo
 
     def update(self, dt: float, walls: list, obstacles: list) -> None:
         # Reducir cooldowns
@@ -50,6 +55,10 @@ class Player:
             self.melee_active_time -= dt
         if self.invuln > 0:
             self.invuln -= dt
+            
+        # Reducir cooldown de disparo
+        if self.shoot_cooldown > 0:
+            self.shoot_cooldown = max(0, self.shoot_cooldown - dt)
             
         # Actualizar efectos temporales de botas
         if self.speed_boots_timer > 0:
@@ -269,3 +278,15 @@ class Player:
     def set_infinite_shots(self, enabled: bool) -> None:
         """Activa o desactiva el disparo infinito."""
         self.infinite_shots = enabled
+        
+    def can_shoot(self) -> bool:
+        """Verifica si el jugador puede disparar (si no está en cooldown)."""
+        return self.shoot_cooldown <= 0 and self.wants_to_shoot
+        
+    def start_shoot_cooldown(self) -> None:
+        """Inicia el cooldown de disparo."""
+        self.shoot_cooldown = self.SHOOT_COOLDOWN_TIME
+        
+    def set_shooting(self, shooting: bool) -> None:
+        """Establece si el jugador está intentando disparar."""
+        self.wants_to_shoot = shooting
