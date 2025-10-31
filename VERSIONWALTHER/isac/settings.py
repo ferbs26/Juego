@@ -27,7 +27,7 @@ ENEMY_TYPES = {
         'color': (200, 50, 200),  # Color púrpura
         'weight': 0.2,
     },
-    'ciclope': {
+    'statue': {
         'hp': 12,
         'speed_scale': 0.5,  # Muy lento
         'color': (100, 50, 150),  # Color morado oscuro

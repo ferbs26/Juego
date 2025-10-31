@@ -522,7 +522,18 @@ class PlayScene(Scene):
             elif self.player.facing == 'right':
                 dx = 1
             if dx != 0 or dy != 0:
-                self.arrows.append(Arrow(self.player.rect.centerx, self.player.rect.centery, dx, dy))
+                # Determinar el tipo de flecha según el estado del jugador
+                arrow_type = 'big_shot' if hasattr(self.player, 'big_shot_active') and self.player.big_shot_active else 'normal'
+                
+                # Crear la flecha con el tipo correspondiente
+                self.arrows.append(Arrow(
+                    self.player.rect.centerx, 
+                    self.player.rect.centery, 
+                    dx, 
+                    dy,
+                    arrow_type=arrow_type
+                ))
+                
                 # Iniciar cooldown de disparo
                 self.player.start_shoot_cooldown()
                 if self.snd_arrow_shoot:
@@ -612,21 +623,18 @@ class PlayScene(Scene):
             if not a.alive:
                 continue
             # Colisión con enemigos
-            for e in self.enemies:
-                if e.alive and a.rect().colliderect(e.rect):
-                    died = e.take_damage(ARROW_DAMAGE)
-                    if died:
-                        if self.snd_enemy_die:
-                            self.snd_enemy_die.play()
-                        # pequeño temblor al matar enemigo
-                        self.shake_time = max(self.shake_time, 0.15)
-                        self.shake_intensity = max(self.shake_intensity, 4)
-                        # loot drop
-                        self._on_enemy_killed(e)
+            for e in self.enemies[:]:
+                if e.alive and e.rect.colliderect(a.rect()):
+                    # Si es un BIG SHOT, matar al enemigo instantáneamente
+                    if hasattr(a, 'arrow_type') and a.arrow_type == 'big_shot':
+                        e.hp = 0  # Matar al instante
+                        e.alive = False
+                        print("¡BIG SHOT eliminó al enemigo al instante!")
                     else:
-                        # golpe no letal: impacto de flecha
-                        if self.snd_arrow_hit:
-                            self.snd_arrow_hit.play()
+                        # Daño normal para flechas estándar
+                        e.take_damage(a.damage)
+                    if self.snd_arrow_hit:
+                        self.snd_arrow_hit.play()
                     a.alive = False
                     break
             # Fuera de pantalla
@@ -1197,6 +1205,18 @@ class PlayScene(Scene):
                     self.inventory.add('arrow', 5)
                     # Aumentar puntuación por recoger flechas
                     self.score += 20
+                elif p.kind == 'big_shot':
+                    # Activar el efecto BIG SHOT por 5 segundos
+                    if hasattr(self.player, 'activate_big_shot'):
+                        self.player.activate_big_shot(5.0)  # 5 segundos de duración
+                        # Aumentar puntuación por recoger BIG SHOT
+                        self.score += 50
+                        # Asegurarse de que el jugador tenga el atributo big_shot_active
+                        if not hasattr(self.player, 'big_shot_active'):
+                            self.player.big_shot_active = True
+                        print("¡BIG SHOT activado!")
+                    if self.snd_pickup:
+                        self.snd_pickup.play()  # Reproducir sonido de recolección
                     
                 if self.snd_pickup:
                     self.snd_pickup.play()
@@ -1258,6 +1278,12 @@ class PlayScene(Scene):
                         # No es necesario rastrear este ítem como los demás, ya que es temporal
                         self.score += 50  # Puntos adicionales por recoger disparo infinito
                         print(f"¡Obtenido: {item_type}!")
+                        
+                    elif item_type == 'big_shot':
+                        # Crear el pickup de BIG SHOT
+                        big_shot_pickup = Pickup('big_shot', chest.rect.centerx, chest.rect.centery - 30)
+                        self.pickups.append(big_shot_pickup)
+                        print(f"¡Apareció un BIG SHOT en {chest.rect.centerx}, {chest.rect.centery - 30}!")
                 break
 
     # ---------- Dungeon helpers ----------
@@ -1309,14 +1335,54 @@ class PlayScene(Scene):
         pygame.draw.polygon(surface, (200, 200, 200), [(rect_a.x + 30, rect_a.y + 10), (rect_a.x + 22, rect_a.y + 14), (rect_a.x + 26, rect_a.y + 6)])
         txt_a = self.font.render(f"x{self.inventory.arrows}", True, WHITE)
         surface.blit(txt_a, (rect_a.x + 40, rect_a.y + 10))
+    def draw_grid(self, surface: pygame.Surface) -> None:
+        """Dibuja una cuadrícula sobre la habitación actual."""
+        room = self.dungeon.get_room()
+        room_map = room.get_room_map()
+        
+        if not room_map:
+            return
+            
+        # Obtener dimensiones del mapa
+        map_width = len(room_map[0]) if room_map else 0
+        map_height = len(room_map)
+        
+        if map_width == 0 or map_height == 0:
+            return
+        
+        # Calcular dimensiones de la celda
+        p = ROOM_PADDING
+        usable_width = WIDTH - 2 * p - 20
+        usable_height = HEIGHT - 2 * p - 20
+        
+        cell_width = usable_width // map_width
+        cell_height = usable_height // map_height
+        
+        offset_x = p + 10 + (usable_width - (cell_width * map_width)) // 2
+        offset_y = p + 10 + (usable_height - (cell_height * map_height)) // 2
+        
+        # Dibujar líneas verticales
+        for x in range(map_width + 1):
+            start_pos = (offset_x + x * cell_width, offset_y)
+            end_pos = (offset_x + x * cell_width, offset_y + map_height * cell_height)
+            pygame.draw.line(surface, (60, 60, 60, 100), start_pos, end_pos, 1)
+        
+        # Dibujar líneas horizontales
+        for y in range(map_height + 1):
+            start_pos = (offset_x, offset_y + y * cell_height)
+            end_pos = (offset_x + map_width * cell_width, offset_y + y * cell_height)
+            pygame.draw.line(surface, (60, 60, 60, 100), start_pos, end_pos, 1)
+
     def draw_room(self, surface: pygame.Surface) -> None:
         room = self.dungeon.get_room()
+        # Dibujar la cuadrícula primero (debajo de todo)
+        self.draw_grid(surface)
         # paredes
         for wall in room.walls():
-            pygame.draw.rect(surface, (90, 90, 90), wall)
+            pygame.draw.rect(surface, room.wall_color, wall)
         # obstáculos internos
         for obs in room.obstacles():
-            pygame.draw.rect(surface, (110, 110, 110), obs)
+            pygame.draw.rect(surface, room.obstacle_color, obs)
         # puertas
         for d in ('up', 'down', 'left', 'right'):
             door = room.doors[d]

@@ -12,11 +12,14 @@ from isac.settings import (
 )
 
 # --- Configuración para la Generación Aleatoria (MODIFICADA) ---
-ROOM_SIZE = 18 
+GRID_SIZE = 16  # Tamaño de la cuadrícula (16x16 celdas)
+CELL_SIZE = 1    # Tamaño de cada celda en píxeles (ajustar según necesidad)
+ROOM_SIZE = GRID_SIZE + 2  # +2 para los bordes
+
 # Parámetros para el generador geométrico
 MAX_SHAPES = 4      
-MIN_SHAPE_SIZE = 3  
-MAX_SHAPE_SIZE = 7  
+MIN_SHAPE_SIZE = 2  
+MAX_SHAPE_SIZE = 5  
 WALL_SYMBOL = '#'
 FLOOR_SYMBOL = '.'
 
@@ -115,17 +118,22 @@ def _is_map_connected(map_list: List[List[str]], size: int) -> bool:
 
 def _generate_random_base_pattern(size: int = ROOM_SIZE) -> List[str]:
     """
-    Genera un patrón base de sala (size x size) con formas geométricas 
-    aleatorias, implementando las nuevas restricciones.
+    Genera un patrón base de sala (GRID_SIZE x GRID_SIZE) con formas geométricas 
+    aleatorias, alineadas a la cuadrícula y con restricciones.
     """
+    # Asegurar que el tamaño de la habitación sea consistente con la cuadrícula
+    size = ROOM_SIZE  # Forzar el tamaño definido
     
-    # Área útil para generar obstáculos (sin tocar la pared de la sala, que está en [1] a [size-2])
-    # Para la restricción 2 original (no tocar la pared), el rango de inicio es [2] a [size-3]
-    # Aplicando la Restricción 3 (DOOR_CLEARANCE_BUFFER)
-    # Se añade un margen extra en los bordes
+    # Área útil para generar obstáculos (sin tocar los bordes)
     BUFFER = DOOR_CLEARANCE_BUFFER
     MIN_COORD = 1 + BUFFER
-    MAX_COORD = size - 1 - BUFFER
+    MAX_COORD = size - 2 - BUFFER  # -2 para dejar espacio para las paredes
+    
+    # Asegurar que las coordenadas sean múltiplos del tamaño de celda
+    def align_to_grid(coord):
+        # Asegurarse de que las coordenadas sean múltiplos del tamaño de celda
+        aligned = (coord // CELL_SIZE) * CELL_SIZE
+        return max(MIN_COORD, min(MAX_COORD, aligned))
     
     # -----------------------------------
     # Lógica de Regeneración (Restricción 2: Conectividad)
@@ -157,31 +165,48 @@ def _generate_random_base_pattern(size: int = ROOM_SIZE) -> List[str]:
         for _ in range(num_shapes):
             shape_type = random.choice(SHAPE_TYPES) # Parámetro 4: Tipos de Formas más Variadas
             
-            # Tamaño aleatorio
-            s = random.randint(MIN_SHAPE_SIZE, MAX_SHAPE_SIZE)
+            # Tamaño aleatorio (múltiplo del tamaño de celda)
+            s = random.randint(MIN_SHAPE_SIZE, MAX_SHAPE_SIZE) * CELL_SIZE
             
-            # Posición de inicio aleatoria (asegurando que la forma no se salga)
-            # Y que respete el buffer de puertas
-            start_x = random.randint(MIN_COORD, MAX_COORD - s)
-            start_y = random.randint(MIN_COORD, MAX_COORD - s)
+            # Posición de inicio alineada a la cuadrícula
+            # Asegurando que la forma no se salga de los límites
+            max_start_x = align_to_grid(MAX_COORD - s)
+            max_start_y = align_to_grid(MAX_COORD - s)
+            
+            start_x = align_to_grid(random.randint(MIN_COORD, max_start_x))
+            start_y = align_to_grid(random.randint(MIN_COORD, max_start_y))
 
             # Función auxiliar para dibujar la forma
             def draw_shape(y, x):
-                if 1 < y < size - 2 and 1 < x < size - 2: # Restricción original: no tocar borde interno
-                    # Restricción 3: Revisar el clearance de la puerta
-                    # Solo afecta la zona cerca de los bordes 1 y size-2
+                # Verificar límites y alineación con la cuadrícula
+                if (1 < y < size - 2 and 1 < x < size - 2 and 
+                    y % CELL_SIZE == 0 and x % CELL_SIZE == 0):
+                    
+                    # Verificar distancia a las puertas
                     is_too_close_to_door = False
                     
-                    # Cerca de puertas horizontales (arriba/abajo)
-                    if (y <= BUFFER + 1 or y >= size - 2 - BUFFER) and (7 <= x <= 10):
-                        is_too_close_to_door = True
+                    # Zonas de puerta (ajustadas a la cuadrícula)
+                    door_zones = [
+                        (1, 7, 10),        # Arriba
+                        (size-2, 7, 10),   # Abajo
+                        (7, 1, 1),         # Izquierda (fila 7, col 1)
+                        (10, 1, 1),        # Izquierda (fila 10, col 1)
+                        (7, size-2, 1),    # Derecha (fila 7, col size-2)
+                        (10, size-2, 1)    # Derecha (fila 10, col size-2)
+                    ]
                     
-                    # Cerca de puertas verticales (izquierda/derecha)
-                    if (x <= BUFFER + 1 or x >= size - 2 - BUFFER) and (7 <= y <= 10):
-                        is_too_close_to_door = True
-                        
+                    for door_y, door_x, door_size in door_zones:
+                        if (abs(y - door_y) <= BUFFER * CELL_SIZE and 
+                            door_x <= x < door_x + door_size * CELL_SIZE):
+                            is_too_close_to_door = True
+                            break
+                    
                     if not is_too_close_to_door:
-                        initial_map[y][x] = WALL_SYMBOL
+                        # Dibujar la celda en la cuadrícula
+                        for dy in range(CELL_SIZE):
+                            for dx in range(CELL_SIZE):
+                                if 0 <= y+dy < size and 0 <= x+dx < size:
+                                    initial_map[y+dy][x+dx] = WALL_SYMBOL
 
             if shape_type == 'line_h':
                 for x in range(start_x, start_x + s):
@@ -324,6 +349,8 @@ class Room:
         'left': Door(open=False, locked=False),
         'right': Door(open=False, locked=False),
     })
+    wall_color: Tuple[int, int, int] = None  # Color de las paredes
+    obstacle_color: Tuple[int, int, int] = None  # Color de los obstáculos
     cleared: bool = False
     spawned: bool = False
     enemies: list = field(default_factory=list)  # Persistir enemigos por sala
@@ -336,6 +363,27 @@ class Room:
         if not isinstance(self._room_pattern, list) or not all(isinstance(row, str) for row in self._room_pattern):
             # Fallback to an empty room pattern if generation fails
             self._room_pattern = ["#" * ROOM_SIZE] * ROOM_size
+            
+        # Generar colores aleatorios para paredes y obstáculos si no están definidos
+        if self.wall_color is None:
+            # Color base aleatorio para paredes (tonos de gris a colores oscuros)
+            base = random.randint(50, 150)
+            variation = random.randint(-30, 30)
+            self.wall_color = (
+                max(40, min(180, base + random.randint(-20, 20))),
+                max(40, min(180, base + variation + random.randint(-20, 20))),
+                max(40, min(180, base + random.randint(-20, 20)))
+            )
+            
+        if self.obstacle_color is None:
+            # Color base aleatorio para obstáculos (un poco más claro que las paredes)
+            base = random.randint(80, 180)
+            variation = random.randint(-40, 40)
+            self.obstacle_color = (
+                max(60, min(200, base + random.randint(-30, 30))),
+                max(60, min(200, base + variation + random.randint(-30, 30))),
+                max(60, min(200, base + random.randint(-30, 30)))
+            )
 
 
     def walls(self) -> List[pygame.Rect]:

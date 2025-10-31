@@ -23,6 +23,8 @@ class Player:
         # Efectos visuales temporales
         self.speed_boots_timer = 0.0
         self.speed_boots_glow_timer = 0.0
+        self.big_shot_timer = 0.0
+        self.big_shot_active = False
         self.max_hp = PLAYER_MAX_HP
         self.hp = self.max_hp
         self.invuln = 0.0  # tiempo restante de invulnerabilidad
@@ -58,7 +60,14 @@ class Player:
             
         # Reducir cooldown de disparo
         if self.shoot_cooldown > 0:
-            self.shoot_cooldown = max(0, self.shoot_cooldown - dt)
+            cooldown_multiplier = 2.0 if self.big_shot_active else 1.0
+            self.shoot_cooldown = max(0, self.shoot_cooldown - (dt / cooldown_multiplier))
+            
+        # Actualizar temporizador de BIG SHOT
+        if self.big_shot_timer > 0:
+            self.big_shot_timer -= dt
+            if self.big_shot_timer <= 0:
+                self.big_shot_active = False
             
         # Actualizar efectos temporales de botas
         if self.speed_boots_timer > 0:
@@ -239,16 +248,17 @@ class Player:
             surface.blit(sprite_to_draw, self.rect)
         else:
             # Fallback: dibujar rectángulo azul si no hay sprite
-            color = BLUE
-            if self.invuln > 0 and int(self.invuln * 10) % 2 == 0:
-                color = (255, 255, 255)  # Blanco cuando está invulnerable
-            pygame.draw.rect(surface, color, self.rect)
+            pygame.draw.rect(surface, BLUE, self.rect)
 
-    def take_damage(self, amount: int = 1) -> None:
-        if self.invuln > 0:
-            return
-        self.hp = max(0, self.hp - amount)
-        self.invuln = PLAYER_INVULN_TIME
+    def activate_big_shot(self, duration: float = 30.0) -> None:
+        """Activa el efecto BIG SHOT por la duración especificada"""
+        self.big_shot_active = True
+        self.big_shot_timer = max(self.big_shot_timer, duration)  # Extender si ya está activo
+        
+    def take_damage(self, amount: int) -> None:
+        if self.invuln <= 0 and not self.shield:
+            self.hp = max(0, self.hp - amount)
+            self.invuln = PLAYER_INVULN_TIME
 
     # Ataque melee: activa una pequeña ventana donde existe una hitbox delante del jugador
     def start_melee(self) -> bool:

@@ -109,21 +109,21 @@ class Enemy:
                 (ENEMY_SIZE, ENEMY_SIZE)
             )
             
-            # Cargar sprites del Cíclope con direcciones
-            self.sprites['ciclope_right'] = pygame.transform.scale(
-                pygame.image.load('assets/enemies/ciclope/ciclope3.png').convert_alpha(), 
+            # Cargar sprites de la Estatua con direcciones
+            self.sprites['statue_right'] = pygame.transform.scale(
+                pygame.image.load('assets/enemies/ciclope/statue3.png').convert_alpha(), 
                 (ENEMY_SIZE, ENEMY_SIZE)
             )
-            self.sprites['ciclope_left'] = pygame.transform.scale(
-                pygame.image.load('assets/enemies/ciclope/ciclope4.png').convert_alpha(), 
+            self.sprites['statue_left'] = pygame.transform.scale(
+                pygame.image.load('assets/enemies/ciclope/statue4.png').convert_alpha(), 
                 (ENEMY_SIZE, ENEMY_SIZE)
             )
-            self.sprites['ciclope_down'] = pygame.transform.scale(
-                pygame.image.load('assets/enemies/ciclope/ciclope1.png').convert_alpha(), 
+            self.sprites['statue_down'] = pygame.transform.scale(
+                pygame.image.load('assets/enemies/ciclope/statue1.png').convert_alpha(), 
                 (ENEMY_SIZE, ENEMY_SIZE)
             )
-            self.sprites['ciclope_up'] = pygame.transform.scale(
-                pygame.image.load('assets/enemies/ciclope/ciclope2.png').convert_alpha(), 
+            self.sprites['statue_up'] = pygame.transform.scale(
+                pygame.image.load('assets/enemies/ciclope/statue2.png').convert_alpha(), 
                 (ENEMY_SIZE, ENEMY_SIZE)
             )
             
@@ -149,8 +149,8 @@ class Enemy:
             if self.kind == 'brute':
                 self.current_sprite = self.sprites['brute_down']
                 self.direction = 'down'
-            elif self.kind == 'ciclope':
-                self.current_sprite = self.sprites['ciclope_down']
+            elif self.kind == 'statue':
+                self.current_sprite = self.sprites['statue_down']
                 self.direction = 'down'
             elif self.kind == 'ghost':
                 self.current_sprite = self.sprites['ghost_down']
@@ -379,21 +379,21 @@ class Enemy:
             vx = dir_vec.x * base_speed
             vy = dir_vec.y * base_speed
             
-            # Actualizar sprite según dirección de movimiento para el cíclope
-            if self.kind == 'ciclope':
+            # Actualizar sprite según dirección de movimiento para la estatua
+            if self.kind == 'statue':
                 if abs(dir_vec.x) > abs(dir_vec.y):
                     if dir_vec.x > 0:
-                        self.current_sprite = self.sprites.get('ciclope_right', self.current_sprite)
+                        self.current_sprite = self.sprites.get('statue_right', self.current_sprite)
                         self.direction = 'right'
                     else:
-                        self.current_sprite = self.sprites.get('ciclope_left', self.current_sprite)
+                        self.current_sprite = self.sprites.get('statue_left', self.current_sprite)
                         self.direction = 'left'
                 else:
                     if dir_vec.y > 0:
-                        self.current_sprite = self.sprites.get('ciclope_down', self.current_sprite)
+                        self.current_sprite = self.sprites.get('statue_down', self.current_sprite)
                         self.direction = 'down'
                     else:
-                        self.current_sprite = self.sprites.get('ciclope_up', self.current_sprite)
+                        self.current_sprite = self.sprites.get('statue_up', self.current_sprite)
                         self.direction = 'up'
 
         # Aplicar movimiento
