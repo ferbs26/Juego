@@ -450,16 +450,19 @@ class Room:
 
     def door_rect(self, direction: str) -> pygame.Rect:
         p = ROOM_PADDING
-        w = 240  # 60 * 4
+        # Puertas norte y sur más anchas
+        ns_w = 320  # Aumentado de 240 a 320 (80 * 4)
+        # Puertas este y oeste mantienen el mismo ancho
+        ew_w = 240  # 60 * 4
         h = 80   # 20 * 4
         if direction == 'up':
-            return pygame.Rect(WIDTH // 2 - w // 2, p - 10, w, h)
+            return pygame.Rect(WIDTH // 2 - ns_w // 2, p - 10, ns_w, h)
         if direction == 'down':
-            return pygame.Rect(WIDTH // 2 - w // 2, HEIGHT - p - h + 10, w, h)
+            return pygame.Rect(WIDTH // 2 - ns_w // 2, HEIGHT - p - h + 10, ns_w, h)
         if direction == 'left':
-            return pygame.Rect(p - 10, HEIGHT // 2 - w // 2, h, w)
+            return pygame.Rect(p - 10, HEIGHT // 2 - ew_w // 2, h, ew_w)
         if direction == 'right':
-            return pygame.Rect(WIDTH - p - h + 10, HEIGHT // 2 - w // 2, h, w)
+            return pygame.Rect(WIDTH - p - h + 10, HEIGHT // 2 - ew_w // 2, h, ew_w)
         return pygame.Rect(0, 0, 0, 0)
 
     def neighbors(self) -> Dict[str, Tuple[int, int]]:

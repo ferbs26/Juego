@@ -1055,24 +1055,33 @@ class PlayScene(Scene):
         if not d:
             return
         if self.dungeon.move_through(d):
-            # Reposicionar al otro extremo
             # Calcular posiciones seguras basadas en paredes (ROOM_PADDING) y tamaño del jugador
-            safe_top = ROOM_PADDING + 10 + (PLAYER_SIZE // 2) + 1
-            safe_bottom = HEIGHT - ROOM_PADDING - 10 - (PLAYER_SIZE // 2) - 1
-            safe_left = ROOM_PADDING + 10 + (PLAYER_SIZE // 2) + 1
-            safe_right = WIDTH - ROOM_PADDING - 10 - (PLAYER_SIZE // 2) - 1
+            # Aumentar la distancia desde la puerta para evitar cambios de sala accidentales
+            safe_margin = 80  # Distancia adicional desde la puerta
+            
+            # Posiciones seguras para cada borde
+            safe_top = ROOM_PADDING + safe_margin + (PLAYER_SIZE // 2)
+            safe_bottom = HEIGHT - ROOM_PADDING - safe_margin - (PLAYER_SIZE // 2)
+            safe_left = ROOM_PADDING + safe_margin + (PLAYER_SIZE // 2)
+            safe_right = WIDTH - ROOM_PADDING - safe_margin - (PLAYER_SIZE // 2)
+            
+            # Posicionar al jugador más adentro de la habitación
             if d == 'up':
-                # Entró por puerta superior; aparecer cerca del borde inferior pero sin tocar la pared
-                self.player.rect.centery = safe_bottom
+                # Entró por puerta superior; aparecer más abajo en la pantalla
+                self.player.rect.centerx = WIDTH // 2  # Centrar horizontalmente
+                self.player.rect.centery = safe_bottom - 40  # Un poco más lejos de la puerta inferior
             elif d == 'down':
-                # Entró por puerta inferior; aparecer cerca del borde superior
-                self.player.rect.centery = safe_top
+                # Entró por puerta inferior; aparecer más arriba en la pantalla
+                self.player.rect.centerx = WIDTH // 2  # Centrar horizontalmente
+                self.player.rect.centery = safe_top + 40  # Un poco más lejos de la puerta superior
             elif d == 'left':
-                # Entró por puerta izquierda; aparecer cerca del borde derecho
-                self.player.rect.centerx = safe_right
+                # Entró por puerta izquierda; aparecer más a la derecha
+                self.player.rect.centery = HEIGHT // 2  # Centrar verticalmente
+                self.player.rect.centerx = safe_right - 40  # Un poco más lejos de la pared derecha
             elif d == 'right':
-                # Entró por puerta derecha; aparecer cerca del borde izquierdo
-                self.player.rect.centerx = safe_left
+                # Entró por puerta derecha; aparecer más a la izquierda
+                self.player.rect.centery = HEIGHT // 2  # Centrar verticalmente
+                self.player.rect.centerx = safe_left + 40  # Un poco más lejos de la pared izquierda
             # Importante: sincronizar posición previa para que revert_position() no vuelva a la sala anterior
             self.player._prev_center = self.player.rect.center
             # Entrar a nueva sala (spawns y puertas)
