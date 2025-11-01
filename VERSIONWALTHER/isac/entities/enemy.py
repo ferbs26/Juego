@@ -34,14 +34,14 @@ class Enemy:
         
         try:
             # Sprite para sniper
-            projectile_path = os.path.join('assets', 'enemies', 'Estrellacaida1.png')
+            projectile_path = 'C:\\Users\\herna\\OneDrive\\Documentos\\GitHub\\Juego\\VERSIONWALTHER\\assets\\bullet\\Estrellacaida1.png'
             if os.path.exists(projectile_path):
                 self.projectile_sprite = pygame.image.load(projectile_path).convert_alpha()
-                # Escalar el sprite al doble del tamaño original
+                # Escalar el sprite al tamaño adecuado (32x32 píxeles)
                 self.projectile_sprite = pygame.transform.scale(self.projectile_sprite, (32, 32))
                 
             # Sprite para monster
-            monster_projectile_path = 'C:/Users/herna/OneDrive/Documentos/GitHub/VERSIONWALTHER/assets/bullet/monstershoot.png'
+            monster_projectile_path = os.path.join('assets', 'bullet', 'monstershoot.png')
             if os.path.exists(monster_projectile_path):
                 self.monster_projectile_sprite = pygame.image.load(monster_projectile_path).convert_alpha()
                 # Escalar el sprite a un tamaño apropiado (ajustar según sea necesario)
@@ -73,7 +73,7 @@ class Enemy:
             # Cargar sprite para sniper
             try:
                 self.sprites['sniper'] = pygame.transform.scale(
-                    pygame.image.load('C:/Users/herna/OneDrive/Documentos/GitHub/VERSIONWALTHER/assets/enemies/snipper.png').convert_alpha(),
+                    pygame.image.load('C:/Users/herna/OneDrive/Documentos/GitHub/Juego/VERSIONWALTHER/assets/enemies/snipper.png').convert_alpha(),
                     (ENEMY_SIZE, ENEMY_SIZE)
                 )
             except Exception as e:

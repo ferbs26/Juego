@@ -71,12 +71,11 @@ class PlayScene(Scene):
         self.enemies: list[Enemy] = []
         self.font = pygame.font.SysFont(None, 24)
         self.big_font = pygame.font.SysFont(None, 32)
-        self.inventory = Inventory(bombs=1, keys=0, arrows=5)
+        self.inventory = Inventory(bombs=1, keys=0, arrows=0)  # Set initial arrows to 0
         self.pickups: list[Pickup] = [
             Pickup('bomb', WIDTH // 3, HEIGHT // 3),
             Pickup('key', WIDTH // 2, HEIGHT // 3),
             Pickup('magic', WIDTH * 2 // 3, HEIGHT // 3),
-            Pickup('arrow', WIDTH // 2, HEIGHT * 2 // 3),
         ]
         self.paused = False
         self.pause_options = ["Continuar", "Guardar", "Salir al menú"]
@@ -192,6 +191,9 @@ class PlayScene(Scene):
 
         # Sistema de puntuación
         self.score: int = 0
+        
+        # Sistema de bombas
+        self.active_bombs = []  # Lista de bombas activas: (x, y, timer, exploded)
 
         # Flashes de muerte de enemigos (lista de tuplas: (rect, tiempo_restante))
         self.kill_flashes: list[tuple[pygame.Rect, float]] = []
@@ -285,6 +287,47 @@ class PlayScene(Scene):
         
         # Si no se encuentra una posición válida, devolver una posición segura
         return (WIDTH // 2, HEIGHT // 2)  # Centro de la habitación
+
+    def _spawn_random_items(self, room) -> None:
+        """Spawn random items (keys, bombs, shields) in the room."""
+        # Clear existing pickups when entering a new room
+        self.pickups = []
+        
+        # Only spawn items in uncleared rooms
+        if room.cleared:
+            return
+            
+        # Number of items to spawn (1-3)
+        num_items = random.randint(1, 3)
+        
+        for _ in range(num_items):
+            # Choose item type (key: 40%, bomb: 40%, shield: 20%)
+            item_type = random.choices(
+                ['key', 'bomb', 'magic'],
+                weights=[0.4, 0.4, 0.2],
+                k=1
+            )[0]
+            
+            # Find a valid position for the item
+            for _ in range(10):  # Try up to 10 times to find a valid position
+                # Generate random position in the room
+                x = random.randint(ROOM_PADDING + 50, WIDTH - ROOM_PADDING - 50)
+                y = random.randint(ROOM_PADDING + 50, HEIGHT - ROOM_PADDING - 50)
+                
+                # Check if position is valid (not on walls, obstacles, or too close to doors)
+                if self._is_valid_pickup_position(x, y):
+                    # Check minimum distance from other pickups
+                    too_close = False
+                    for pickup in self.pickups:
+                        dx = pickup.x - x
+                        dy = pickup.y - y
+                        if dx*dx + dy*dy < 2500:  # Minimum distance of 50 pixels
+                            too_close = True
+                            break
+                    
+                    if not too_close:
+                        self.pickups.append(Pickup(item_type, x, y))
+                        break
 
     def _enter_room(self, initial: bool = False) -> None:
         room = self.dungeon.get_room()
@@ -386,6 +429,9 @@ class PlayScene(Scene):
         self.special_items.clear()
         self.companion_spikes.clear()
         
+        # Spawn random items in the room
+        self._spawn_random_items(room)
+        
         # Re-agregar compañero activo si existe y reposicionarlo junto al jugador
         if self.active_companion:
             # Reposicionar el compañero junto al jugador en la nueva sala
@@ -461,17 +507,13 @@ class PlayScene(Scene):
             # Usar bomba con B
             elif event.key == pygame.K_b:
                 if self.inventory.use_bomb():
-                    # Pequeño "boom" visual (placeholder) dañando enemigos cerca
-                    boom_rect = self.player.rect.inflate(160, 160)
-                    for e in self.enemies:
-                        if e.alive and boom_rect.colliderect(e.rect):
-                            died = e.take_damage(BOMB_DAMAGE)
-                            if died:
-                                if self.snd_enemy_die:
-                                    self.snd_enemy_die.play()
-                                self.shake_time = max(self.shake_time, 0.15)
-                                self.shake_intensity = max(self.shake_intensity, 4)
-                                self._on_enemy_killed(e)
+                    # Crear una nueva bomba en la posición del jugador con temporizador de 0.6 segundos
+                    self.active_bombs.append({
+                        'x': self.player.rect.centerx,
+                        'y': self.player.rect.centery,
+                        'timer': 0.4,  # 0.4 segundos antes de explotar
+                        'exploded': False
+                    })
             # Recoger items al pasar encima (también se recoge automáticamente en update)
             elif event.key == pygame.K_e:
                 # Intentar recoger y también abrir puerta si hay y tenemos llave
@@ -641,6 +683,38 @@ class PlayScene(Scene):
             if a.alive and (a.x < 0 or a.x > WIDTH or a.y < 0 or a.y > HEIGHT):
                 a.alive = False
         self.arrows = [a for a in self.arrows if a.alive]
+
+        # Actualizar bombas
+        for bomb in self.active_bombs[:]:
+            if not bomb['exploded']:
+                # Contar hacia atrás el temporizador
+                bomb['timer'] -= dt
+                if bomb['timer'] <= 0:
+                    # La bomba explota
+                    bomb['exploded'] = True
+                    bomb['timer'] = 0.3  # Tiempo que dura la explosión
+                    
+                    # Dañar enemigos en el radio de la explosión
+                    boom_rect = pygame.Rect(
+                        bomb['x'] - 80,  # Radio de 80 píxeles
+                        bomb['y'] - 80,
+                        160,
+                        160
+                    )
+                    for e in self.enemies:
+                        if e.alive and boom_rect.colliderect(e.rect):
+                            died = e.take_damage(BOMB_DAMAGE)
+                            if died:
+                                if self.snd_enemy_die:
+                                    self.snd_enemy_die.play()
+                                self.shake_time = max(self.shake_time, 0.15)
+                                self.shake_intensity = max(self.shake_intensity, 4)
+                                self._on_enemy_killed(e)
+            else:
+                # La explosión está activa, contar hacia atrás
+                bomb['timer'] -= dt
+                if bomb['timer'] <= 0:
+                    self.active_bombs.remove(bomb)
 
         # Transición por puertas abiertas
         self.handle_doors_transition()
@@ -851,12 +925,31 @@ class PlayScene(Scene):
         # Fondo de sala simple y paredes/puertas
         self.draw_room(world)
 
+        # Dibujar bombas
+        for bomb in self.active_bombs:
+            if not bomb['exploded']:
+                # Dibujar sprite de la bomba
+                try:
+                    bomb_img = pygame.image.load('assets/player/bomba.png').convert_alpha()
+                    bomb_rect = bomb_img.get_rect(center=(int(bomb['x']), int(bomb['y'])))
+                    world.blit(bomb_img, bomb_rect)
+                except:
+                    # Fallback: dibujar un círculo rojo si no se puede cargar la imagen
+                    pygame.draw.circle(world, (255, 0, 0), (int(bomb['x']), int(bomb['y'])), 10)
+            else:
+                # Dibujar explosión
+                radius = int(80 * (1 + (0.3 - bomb['timer']) * 2))  # La explosión crece con el tiempo
+                s = pygame.Surface((radius*2, radius*2), pygame.SRCALPHA)
+                pygame.draw.circle(s, (255, 200, 0, 128), (radius, radius), radius)
+                world.blit(s, (int(bomb['x']) - radius, int(bomb['y']) - radius))
+        
         # Dibujar flechas
         for a in self.arrows:
             a.draw(world)
 
         # Dibujar enemigos
         for e in self.enemies:
+            e.draw(surface)  
             e.draw(surface)  # Changed from world to surface to match the method signature
 
         # Dibujar flashes de muerte sobre el mundo
@@ -1201,10 +1294,6 @@ class PlayScene(Scene):
                     self.inventory.add('key')
                 elif p.kind == 'magic':
                     self.player.magic = min(MAGIC_MAX, self.player.magic + 40)
-                elif p.kind == 'arrow':
-                    self.inventory.add('arrow', 5)
-                    # Aumentar puntuación por recoger flechas
-                    self.score += 20
                 elif p.kind == 'big_shot':
                     # Activar el efecto BIG SHOT por 5 segundos
                     if hasattr(self.player, 'activate_big_shot'):
@@ -1326,15 +1415,15 @@ class PlayScene(Scene):
         txt_k = self.font.render(f"x{self.inventory.keys}", True, WHITE)
         surface.blit(txt_k, (rect_k.x + 40, rect_k.y + 10))
 
-        # Slot Flechas
-        rect_a = pygame.Rect(base_x + (slot_w + gap) * 2, base_y, slot_w, slot_h)
-        pygame.draw.rect(surface, (40, 40, 40), rect_a, border_radius=6)
-        pygame.draw.rect(surface, (120, 120, 120), rect_a, 2, border_radius=6)
-        # Ícono simple de flecha
-        pygame.draw.line(surface, (200, 200, 200), (rect_a.x + 10, rect_a.y + 28), (rect_a.x + 28, rect_a.y + 12), 2)
-        pygame.draw.polygon(surface, (200, 200, 200), [(rect_a.x + 30, rect_a.y + 10), (rect_a.x + 22, rect_a.y + 14), (rect_a.x + 26, rect_a.y + 6)])
-        txt_a = self.font.render(f"x{self.inventory.arrows}", True, WHITE)
-        surface.blit(txt_a, (rect_a.x + 40, rect_a.y + 10))
+        # Slot Flechas (invisible)
+        # rect_a = pygame.Rect(base_x + (slot_w + gap) * 2, base_y, slot_w, slot_h)
+        # pygame.draw.rect(surface, (40, 40, 40), rect_a, border_radius=6)
+        # pygame.draw.rect(surface, (120, 120, 120), rect_a, 2, border_radius=6)
+        # # Ícono simple de flecha
+        # pygame.draw.line(surface, (200, 200, 200), (rect_a.x + 10, rect_a.y + 28), (rect_a.x + 28, rect_a.y + 12), 2)
+        # pygame.draw.polygon(surface, (200, 200, 200), [(rect_a.x + 30, rect_a.y + 10), (rect_a.x + 22, rect_a.y + 14), (rect_a.x + 26, rect_a.y + 6)])
+        # txt_a = self.font.render(f"x{self.inventory.arrows}", True, WHITE)
+        # surface.blit(txt_a, (rect_a.x + 40, rect_a.y + 10))
     def draw_grid(self, surface: pygame.Surface) -> None:
         """Dibuja una cuadrícula sobre la habitación actual."""
         room = self.dungeon.get_room()
