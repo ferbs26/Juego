@@ -17,14 +17,19 @@ class Door:
 class Dungeon:
     rooms: Dict[Tuple[int, int], Room] = field(default_factory=dict)
     current: Tuple[int, int] = (0, 0)
+    visited_rooms: Set[Tuple[int, int]] = field(default_factory=set)
+    dungeon_size: int = 5
+    num_rooms: int = 10
 
     def __post_init__(self) -> None:
         if not self.rooms:
             # Generate a random connected dungeon if no rooms are provided
-            self.generate_dungeon(size=5, num_rooms=10)
+            self.generate_dungeon(size=self.dungeon_size, num_rooms=self.num_rooms)
             # Set the starting room to the first room in the dictionary
             if self.rooms:
                 self.current = next(iter(self.rooms))
+                # Mark starting room as visited
+                self.visited_rooms.add(self.current)
                 # Open all unlocked doors in the starting room
                 self.open_all_unlocked_in_current()
 
@@ -69,7 +74,15 @@ class Dungeon:
         door = room.doors[direction]
         if not door.open:
             return False
+        
+        # Mark the new room as visited
+        self.visited_rooms.add((nx, ny))
         self.current = (nx, ny)
+        
+        # Check if all rooms have been visited
+        if len(self.visited_rooms) >= len(self.rooms):
+            self._regenerate_dungeon()
+            
         return True
 
     def unlock(self, direction: str) -> bool:
@@ -183,7 +196,7 @@ class Dungeon:
         
         # Sincronizar todas las puertas
         self._sync_all_doors()
-    
+
     def _ensure_fully_connected(self, size: int) -> None:
         """
         Asegura que todas las habitaciones estén conectadas.
@@ -244,7 +257,7 @@ class Dungeon:
                 self.rooms[start].doors[direction] = Door(open=True, locked=False)
             if end in self.rooms and back_direction in self.rooms[end].doors:
                 self.rooms[end].doors[back_direction] = Door(open=True, locked=False)
-    
+
     def _sync_all_doors(self) -> None:
         """
         Sincroniza todas las puertas del calabozo.
@@ -256,4 +269,32 @@ class Dungeon:
                     room.doors[direction] = Door(open=False, locked=False)
         
         # Luego, sincronizar todas las puertas
+        self._sync_doors()
+
+    def _regenerate_dungeon(self) -> None:
+        """
+        Regenera el calabozo con nuevas habitaciones y enemigos.
+        """
+        # Guardar la posición actual para referencia
+        old_pos = self.current
+        
+        # Limpiar el estado actual
+        self.rooms.clear()
+        self.visited_rooms.clear()
+        
+        # Aumentar la dificultad (opcional)
+        self.dungeon_size = min(self.dungeon_size + 1, 8)  # Tamaño máximo de 8x8
+        self.num_rooms = min(self.num_rooms + 2, 20)  # Máximo 20 habitaciones
+        
+        # Generar un nuevo calabozo
+        self.generate_dungeon(size=self.dungeon_size, num_rooms=self.num_rooms)
+        
+        # Establecer la nueva posición actual (la primera habitación)
+        if self.rooms:
+            self.current = next(iter(self.rooms))
+            self.visited_rooms.add(self.current)
+            self.open_all_unlocked_in_current()
+            
+        # Notificar al jugador (esto debería manejarse en la UI del juego)
+        print("¡Has explorado todas las habitaciones! El calabozo se ha regenerado con nuevas salas y enemigos.")
         self._sync_doors()

@@ -69,6 +69,7 @@ class PlayScene(Scene):
         # Create player at the valid spawn position
         self.player = Player(spawn_x, spawn_y)
         self.enemies: list[Enemy] = []
+        self.score = 0  # Initialize score counter
         self.font = pygame.font.SysFont(None, 24)
         self.big_font = pygame.font.SysFont(None, 32)
         self.inventory = Inventory(bombs=1, keys=0, arrows=0)  # Set initial arrows to 0
@@ -674,7 +675,9 @@ class PlayScene(Scene):
                         print("¡BIG SHOT eliminó al enemigo al instante!")
                     else:
                         # Daño normal para flechas estándar
-                        e.take_damage(a.damage)
+                        died, points = e.take_damage(a.damage)
+                        if died:
+                            self.score += points
                     if self.snd_arrow_hit:
                         self.snd_arrow_hit.play()
                     a.alive = False
@@ -703,8 +706,9 @@ class PlayScene(Scene):
                     )
                     for e in self.enemies:
                         if e.alive and boom_rect.colliderect(e.rect):
-                            died = e.take_damage(BOMB_DAMAGE)
+                            died, points = e.take_damage(BOMB_DAMAGE)
                             if died:
+                                self.score += points
                                 if self.snd_enemy_die:
                                     self.snd_enemy_die.play()
                                 self.shake_time = max(self.shake_time, 0.15)
@@ -746,8 +750,9 @@ class PlayScene(Scene):
         if hit:
             for e in self.enemies:
                 if e.alive and hit.colliderect(e.rect):
-                    died = e.take_damage(MELEE_DAMAGE)
+                    died, points = e.take_damage(MELEE_DAMAGE)
                     if died:
+                        self.score += points
                         if self.snd_enemy_die:
                             self.snd_enemy_die.play()
                         self.shake_time = max(self.shake_time, 0.15)
@@ -854,8 +859,9 @@ class PlayScene(Scene):
             # Colisión con enemigos
             for enemy in self.enemies:
                 if enemy.alive and spike.alive and spike.rect().colliderect(enemy.rect):
-                    died = enemy.take_damage(spike.damage)
+                    died, points = enemy.take_damage(spike.damage)
                     if died:
+                        self.score += points
                         if self.snd_enemy_die:
                             self.snd_enemy_die.play()
                         self._on_enemy_killed(enemy)
@@ -1275,11 +1281,9 @@ class PlayScene(Scene):
         if random.random() < self._loot_chance:
             # 75% de probabilidad de soltar un ítem
             if random.random() < 0.75:
-                # Distribución de probabilidad: 33.3% flechas, 33.3% bombas, 33.3% llaves
+                # Distribución de probabilidad: 50% bombas, 50% llaves
                 rand_val = random.random()
-                if rand_val < 0.333:
-                    kind = 'arrow'
-                elif rand_val < 0.666:
+                if rand_val < 0.5:
                     kind = 'bomb'
                 else:
                     kind = 'key'
@@ -1295,27 +1299,23 @@ class PlayScene(Scene):
         remaining: list[Pickup] = []
         for p in self.pickups:
             if p.rect().colliderect(self.player.rect):
+                # Add 25 points for any pickup
+                self.score += 25
+                
                 if p.kind == 'bomb':
                     self.inventory.add('bomb')
-                    # Aumentar puntuación por recoger bombas
-                    self.score += 20
                 elif p.kind == 'key':
                     self.inventory.add('key')
                 elif p.kind == 'magic':
-                    self.player.magic = min(MAGIC_MAX, self.player.magic + 40)
-                elif p.kind == 'big_shot':
-                    # Activar el efecto BIG SHOT por 5 segundos
-                    if hasattr(self.player, 'activate_big_shot'):
-                        self.player.activate_big_shot(5.0)  # 5 segundos de duración
-                        # Aumentar puntuación por recoger BIG SHOT
-                        self.score += 50
-                        # Asegurarse de que el jugador tenga el atributo big_shot_active
-                        if not hasattr(self.player, 'big_shot_active'):
-                            self.player.big_shot_active = True
-                        print("¡BIG SHOT activado!")
+                    self.player.magic = min(MAGIC_MAX, self.player.magic + 20)
+                elif p.kind == 'shield':
+                    self.player.shield = True
+                    if not hasattr(self.player, 'big_shot_active'):
+                        self.player.big_shot_active = True
+                    print("¡BIG SHOT activado!")
                     if self.snd_pickup:
-                        self.snd_pickup.play()  # Reproducir sonido de recolección
-                    
+                        self.snd_pickup.play()
+                
                 if self.snd_pickup:
                     self.snd_pickup.play()
             else:
@@ -1435,6 +1435,10 @@ class PlayScene(Scene):
         # surface.blit(txt_a, (rect_a.x + 40, rect_a.y + 10))
     def draw_grid(self, surface: pygame.Surface) -> None:
         """Dibuja una cuadrícula sobre la habitación actual."""
+        # Hacemos la cuadrícula invisible devolviendo temprano
+        return
+        
+        # El resto del código se mantiene pero no se ejecutará
         room = self.dungeon.get_room()
         room_map = room.get_room_map()
         
