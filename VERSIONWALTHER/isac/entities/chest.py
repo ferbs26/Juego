@@ -41,16 +41,18 @@ class Chest:
         self.opening_timer = self.opening_duration
         
         # Seleccionar item aleatorio con probabilidades ajustadas
-        # 25% de probabilidad para cada uno de los 4 objetos
+        # 20% de probabilidad para cada uno de los 5 objetos
         rand_num = random.random()
-        if rand_num < 0.25:
+        if rand_num < 0.20:
             self.item_dropped = 'speed_boots'
-        elif rand_num < 0.50:
+        elif rand_num < 0.40:
             self.item_dropped = 'companion'
-        elif rand_num < 0.75:
+        elif rand_num < 0.60:
             self.item_dropped = 'health_doubler'
-        else:
+        elif rand_num < 0.80:
             self.item_dropped = 'infinite_shot'
+        else:
+            self.item_dropped = 'big_shot'
         return self.item_dropped
     
     def update(self, dt: float):

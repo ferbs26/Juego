@@ -1,13 +1,13 @@
 import os
 import pygame
 from dataclasses import dataclass, field
-from typing import Dict, Optional
-from isac.settings import CYAN, WHITE, TILE
+from typing import Dict, Optional, Tuple
+from isac.settings import CYAN, WHITE, TILE, RED
 
 
 @dataclass
 class Pickup:
-    kind: str  # 'bomb' | 'key' | 'magic' | 'arrow'
+    kind: str  # 'bomb' | 'key' | 'magic' | 'arrow' | 'big_shot'
     x: int
     y: int
     _images: Dict[str, pygame.Surface] = field(default_factory=dict, init=False)
@@ -23,6 +23,10 @@ class Pickup:
                 # Cargar imagen de llave (tamaño duplicado)
                 key_img = pygame.image.load(os.path.join('assets', 'player', 'llave.png')).convert_alpha()
                 self._images['key'] = pygame.transform.scale(key_img, (40, 40))
+                
+                    # Cargar imagen de BIG SHOT (ojo)
+                eyeball_img = pygame.image.load(os.path.join('assets', 'player', 'eyeball.png')).convert_alpha()
+                self._images['big_shot'] = pygame.transform.scale(eyeball_img, (40, 40))
                 
                 # Para otros tipos, mantener el comportamiento original con colores
                 self._images['magic'] = None
@@ -49,6 +53,8 @@ class Pickup:
                 color = (0, 255, 0)    # Verde
             elif self.kind == 'magic':
                 color = CYAN
+            elif self.kind == 'big_shot':
+                color = RED  # Rojo para el BIG SHOT
             else:  # 'arrow'
                 color = WHITE
                 
