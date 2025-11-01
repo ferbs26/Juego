@@ -11,6 +11,15 @@ class SpeedBoots:
         self.ray_timer = 0.0
         self.speed_multiplier = 1.5  # 50% más velocidad
         
+        # Cargar el sprite de las botas
+        try:
+            self.sprite = pygame.image.load('assets/player/speedboots.png').convert_alpha()
+            # Escalar el sprite al tamaño del objeto
+            self.sprite = pygame.transform.scale(self.sprite, (self.rect.width, self.rect.height))
+        except pygame.error as e:
+            print(f"Error al cargar el sprite de las botas: {e}")
+            self.sprite = None
+        
     def update(self, dt: float):
         """Actualiza los efectos visuales"""
         self.glow_timer += dt * 3.0  # Velocidad del brillo
@@ -26,38 +35,14 @@ class SpeedBoots:
         # self.collected = True
         
     def draw(self, surface: pygame.Surface):
-        """Dibuja las botas sin efectos brillantes"""
-        if self.collected:
+        """Dibuja las botas con el sprite"""
+        if self.collected or not hasattr(self, 'sprite') or self.sprite is None:
             return
         
-        # Dibujar las botas
-        boot_color = (139, 69, 19)  # Marrón
-        sole_color = (101, 67, 33)  # Marrón más oscuro
-        lace_color = (255, 255, 255)  # Blanco
+        # Dibujar el sprite
+        surface.blit(self.sprite, self.rect)
         
-        # Bota izquierda
-        left_boot = pygame.Rect(self.rect.x, self.rect.y + 4, 
-                               self.rect.width // 2 - 1, self.rect.height - 4)
-        pygame.draw.rect(surface, boot_color, left_boot, border_radius=3)
-        pygame.draw.rect(surface, sole_color, 
-                        (left_boot.x, left_boot.bottom - 3, left_boot.width, 3))
-        
-        # Bota derecha
-        right_boot = pygame.Rect(self.rect.x + self.rect.width // 2 + 1, self.rect.y + 4,
-                                self.rect.width // 2 - 1, self.rect.height - 4)
-        pygame.draw.rect(surface, boot_color, right_boot, border_radius=3)
-        pygame.draw.rect(surface, sole_color,
-                        (right_boot.x, right_boot.bottom - 3, right_boot.width, 3))
-        
-        # Cordones
-        pygame.draw.line(surface, lace_color, 
-                        (left_boot.centerx, left_boot.y + 2),
-                        (left_boot.centerx, left_boot.y + 8), 1)
-        pygame.draw.line(surface, lace_color,
-                        (right_boot.centerx, right_boot.y + 2),
-                        (right_boot.centerx, right_boot.y + 8), 1)
-        
-        # Brillo adicional en las botas
+        # Mantener el efecto de brillo
         highlight_alpha = int(150 + 100 * math.sin(self.glow_timer * 1.5))
         highlight_surface = pygame.Surface((self.rect.width, 4), pygame.SRCALPHA)
         highlight_color = (255, 255, 200, highlight_alpha)

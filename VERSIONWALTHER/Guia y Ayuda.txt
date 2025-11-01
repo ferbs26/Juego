@@ -1,0 +1,52 @@
+FIX_SHORTCUT - MANUAL DE USO Y CONTROLES
+======================================
+
+INTRODUCCIÓN
+------------
+Bienvenido a Fix_Shortcut, un emocionante juego de acción y aventura con elementos de disparos y combate. Este documento explica cómo jugar y utilizar todas las mecánicas del juego.
+
+CONTROLES DEL JUEGO
+-------------------
+
+Movimiento:
+- Flechas direccionales (↑, ↓, ←, →) o teclas WASD: Mueven al personaje
+- El personaje siempre disparará en la dirección en la que está mirando
+
+Acciones:
+- Barra espaciadora: Disparar proyectiles
+- Tecla E: Ataque cuerpo a cuerpo
+- Tecla SHIFT: Activar/desactivar escudo (consume magia)
+
+Objetos y Habilidades:
+- Recolecta botas de velocidad para aumentar temporalmente tu velocidad
+- Encuentra mejoras de disparo para potenciar tus ataques
+- Recolecta corazones para recuperar salud
+- Los cofres pueden contener objetos especiales
+
+MECÁNICAS DEL JUEGO
+------------------
+- **Salud**: Se muestra en la esquina superior izquierda. Pierdes salud al ser golpeado por enemigos.
+- **Magia**: Se usa para activar el escudo. Se regenera con el tiempo.
+- **Disparo mejorado**: Algunos ítems te dan disparos más poderosos temporalmente.
+- **Invenario**: Presiona I para ver los objetos que has recolectado.
+
+CONSEJOS
+--------
+1. Mantén la distancia con los enemigos y usa tu rango a tu favor
+2. Usa el escudo estratégicamente para bloquear ataques peligrosos
+3. Explora todas las áreas para encontrar mejoras y objetos ocultos
+4. Los enemigos pueden dejar caer objetos al ser derrotados
+5. Gestiona tu magia para no quedarte sin energía en momentos clave
+
+REQUISITOS DEL SISTEMA
+----------------------
+- Python 3.7 o superior
+- Pygame
+
+CÓMO INICIAR EL JUEGO
+---------------------
+1. Asegúrate de tener Python instalado en tu sistema
+2. Instala las dependencias con: pip install -r requirements.txt
+3. Ejecuta el juego con: python juego.py
+
+¡Diviértete jugando a Fix_Shortcut!

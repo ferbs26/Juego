@@ -69,6 +69,7 @@ class PlayScene(Scene):
         # Create player at the valid spawn position
         self.player = Player(spawn_x, spawn_y)
         self.enemies: list[Enemy] = []
+        self.score = 0  # Initialize score counter
         self.font = pygame.font.SysFont(None, 24)
         self.big_font = pygame.font.SysFont(None, 32)
         self.inventory = Inventory(bombs=1, keys=0, arrows=0)  # Set initial arrows to 0
@@ -674,7 +675,9 @@ class PlayScene(Scene):
                         print("¡BIG SHOT eliminó al enemigo al instante!")
                     else:
                         # Daño normal para flechas estándar
-                        e.take_damage(a.damage)
+                        died, points = e.take_damage(a.damage)
+                        if died:
+                            self.score += points
                     if self.snd_arrow_hit:
                         self.snd_arrow_hit.play()
                     a.alive = False
@@ -703,8 +706,9 @@ class PlayScene(Scene):
                     )
                     for e in self.enemies:
                         if e.alive and boom_rect.colliderect(e.rect):
-                            died = e.take_damage(BOMB_DAMAGE)
+                            died, points = e.take_damage(BOMB_DAMAGE)
                             if died:
+                                self.score += points
                                 if self.snd_enemy_die:
                                     self.snd_enemy_die.play()
                                 self.shake_time = max(self.shake_time, 0.15)
@@ -746,8 +750,9 @@ class PlayScene(Scene):
         if hit:
             for e in self.enemies:
                 if e.alive and hit.colliderect(e.rect):
-                    died = e.take_damage(MELEE_DAMAGE)
+                    died, points = e.take_damage(MELEE_DAMAGE)
                     if died:
+                        self.score += points
                         if self.snd_enemy_die:
                             self.snd_enemy_die.play()
                         self.shake_time = max(self.shake_time, 0.15)
@@ -854,8 +859,9 @@ class PlayScene(Scene):
             # Colisión con enemigos
             for enemy in self.enemies:
                 if enemy.alive and spike.alive and spike.rect().colliderect(enemy.rect):
-                    died = enemy.take_damage(spike.damage)
+                    died, points = enemy.take_damage(spike.damage)
                     if died:
+                        self.score += points
                         if self.snd_enemy_die:
                             self.snd_enemy_die.play()
                         self._on_enemy_killed(enemy)
@@ -1055,24 +1061,33 @@ class PlayScene(Scene):
         if not d:
             return
         if self.dungeon.move_through(d):
-            # Reposicionar al otro extremo
             # Calcular posiciones seguras basadas en paredes (ROOM_PADDING) y tamaño del jugador
-            safe_top = ROOM_PADDING + 10 + (PLAYER_SIZE // 2) + 1
-            safe_bottom = HEIGHT - ROOM_PADDING - 10 - (PLAYER_SIZE // 2) - 1
-            safe_left = ROOM_PADDING + 10 + (PLAYER_SIZE // 2) + 1
-            safe_right = WIDTH - ROOM_PADDING - 10 - (PLAYER_SIZE // 2) - 1
+            # Aumentar la distancia desde la puerta para evitar cambios de sala accidentales
+            safe_margin = 80  # Distancia adicional desde la puerta
+            
+            # Posiciones seguras para cada borde
+            safe_top = ROOM_PADDING + safe_margin + (PLAYER_SIZE // 2)
+            safe_bottom = HEIGHT - ROOM_PADDING - safe_margin - (PLAYER_SIZE // 2)
+            safe_left = ROOM_PADDING + safe_margin + (PLAYER_SIZE // 2)
+            safe_right = WIDTH - ROOM_PADDING - safe_margin - (PLAYER_SIZE // 2)
+            
+            # Posicionar al jugador más adentro de la habitación
             if d == 'up':
-                # Entró por puerta superior; aparecer cerca del borde inferior pero sin tocar la pared
-                self.player.rect.centery = safe_bottom
+                # Entró por puerta superior; aparecer más abajo en la pantalla
+                self.player.rect.centerx = WIDTH // 2  # Centrar horizontalmente
+                self.player.rect.centery = safe_bottom - 40  # Un poco más lejos de la puerta inferior
             elif d == 'down':
-                # Entró por puerta inferior; aparecer cerca del borde superior
-                self.player.rect.centery = safe_top
+                # Entró por puerta inferior; aparecer más arriba en la pantalla
+                self.player.rect.centerx = WIDTH // 2  # Centrar horizontalmente
+                self.player.rect.centery = safe_top + 40  # Un poco más lejos de la puerta superior
             elif d == 'left':
-                # Entró por puerta izquierda; aparecer cerca del borde derecho
-                self.player.rect.centerx = safe_right
+                # Entró por puerta izquierda; aparecer más a la derecha
+                self.player.rect.centery = HEIGHT // 2  # Centrar verticalmente
+                self.player.rect.centerx = safe_right - 40  # Un poco más lejos de la pared derecha
             elif d == 'right':
-                # Entró por puerta derecha; aparecer cerca del borde izquierdo
-                self.player.rect.centerx = safe_left
+                # Entró por puerta derecha; aparecer más a la izquierda
+                self.player.rect.centery = HEIGHT // 2  # Centrar verticalmente
+                self.player.rect.centerx = safe_left + 40  # Un poco más lejos de la pared izquierda
             # Importante: sincronizar posición previa para que revert_position() no vuelva a la sala anterior
             self.player._prev_center = self.player.rect.center
             # Entrar a nueva sala (spawns y puertas)
@@ -1266,11 +1281,9 @@ class PlayScene(Scene):
         if random.random() < self._loot_chance:
             # 75% de probabilidad de soltar un ítem
             if random.random() < 0.75:
-                # Distribución de probabilidad: 33.3% flechas, 33.3% bombas, 33.3% llaves
+                # Distribución de probabilidad: 50% bombas, 50% llaves
                 rand_val = random.random()
-                if rand_val < 0.333:
-                    kind = 'arrow'
-                elif rand_val < 0.666:
+                if rand_val < 0.5:
                     kind = 'bomb'
                 else:
                     kind = 'key'
@@ -1286,27 +1299,23 @@ class PlayScene(Scene):
         remaining: list[Pickup] = []
         for p in self.pickups:
             if p.rect().colliderect(self.player.rect):
+                # Add 25 points for any pickup
+                self.score += 25
+                
                 if p.kind == 'bomb':
                     self.inventory.add('bomb')
-                    # Aumentar puntuación por recoger bombas
-                    self.score += 20
                 elif p.kind == 'key':
                     self.inventory.add('key')
                 elif p.kind == 'magic':
-                    self.player.magic = min(MAGIC_MAX, self.player.magic + 40)
-                elif p.kind == 'big_shot':
-                    # Activar el efecto BIG SHOT por 5 segundos
-                    if hasattr(self.player, 'activate_big_shot'):
-                        self.player.activate_big_shot(5.0)  # 5 segundos de duración
-                        # Aumentar puntuación por recoger BIG SHOT
-                        self.score += 50
-                        # Asegurarse de que el jugador tenga el atributo big_shot_active
-                        if not hasattr(self.player, 'big_shot_active'):
-                            self.player.big_shot_active = True
-                        print("¡BIG SHOT activado!")
+                    self.player.magic = min(MAGIC_MAX, self.player.magic + 20)
+                elif p.kind == 'shield':
+                    self.player.shield = True
+                    if not hasattr(self.player, 'big_shot_active'):
+                        self.player.big_shot_active = True
+                    print("¡BIG SHOT activado!")
                     if self.snd_pickup:
-                        self.snd_pickup.play()  # Reproducir sonido de recolección
-                    
+                        self.snd_pickup.play()
+                
                 if self.snd_pickup:
                     self.snd_pickup.play()
             else:
@@ -1426,6 +1435,10 @@ class PlayScene(Scene):
         # surface.blit(txt_a, (rect_a.x + 40, rect_a.y + 10))
     def draw_grid(self, surface: pygame.Surface) -> None:
         """Dibuja una cuadrícula sobre la habitación actual."""
+        # Hacemos la cuadrícula invisible devolviendo temprano
+        return
+        
+        # El resto del código se mantiene pero no se ejecutará
         room = self.dungeon.get_room()
         room_map = room.get_room_map()
         

@@ -167,19 +167,27 @@ class Enemy:
             print(f"Error al cargar sprites: {e}")
             self.current_sprite = None
 
-    def take_damage(self, dmg: int) -> bool:
-        """Aplica daño. Devuelve True si muere tras el golpe."""
+    def take_damage(self, dmg: int) -> tuple[bool, int]:
+        """
+        Aplica daño al enemigo.
+        
+        Returns:
+            tuple: (enemy_died, points_earned)
+        """
         if not self.alive:
-            return False
+            return False, 0
         if self.invuln_timer > 0:
-            return False
+            return False, 0
+            
         self.hp -= max(0, dmg)
         self.hurt_timer = 0.12
         self.invuln_timer = 0.05
+        
         if self.hp <= 0:
             self.alive = False
-            return True
-        return False
+            return True, 150  # 150 points for defeating an enemy
+            
+        return False, 0
 
     def update_projectiles(self, dt: float, player_rect: pygame.Rect) -> bool:
         """Actualiza los proyectiles y devuelve True si el jugador fue golpeado"""

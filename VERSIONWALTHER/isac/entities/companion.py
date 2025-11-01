@@ -1,3 +1,4 @@
+import os
 import pygame
 import math
 from isac.settings import TILE
@@ -74,7 +75,8 @@ class Spike:
 class Companion:
     def __init__(self, x: int, y: int):
         # Cargar el sprite de la estatua
-        self.sprite = pygame.image.load('C:/Users/herna/OneDrive/Documentos/GitHub/VERSIONWALTHER/assets/player/statue.png').convert_alpha()
+        sprite_path = os.path.join('assets', 'player', 'statue.png')
+        self.sprite = pygame.image.load(sprite_path).convert_alpha()
         
         # Escalar el sprite a 32x32 píxeles
         sprite_size = (32, 32)  # Tamaño fijo de 32x32 píxeles
