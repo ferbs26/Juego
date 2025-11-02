@@ -28,18 +28,27 @@ class Arrow:
     def __post_init__(self):
         # Cargar el sprite apropiado según el tipo de flecha
         try:
+            print(f"Creando flecha de tipo: {self.arrow_type}")
+            
             if self.arrow_type == 'big_shot':
                 sprite_path = os.path.join('assets', 'bullet', 'weirdshot.png')
                 self.damage = 5  # Daño fijo de 5 para BIG SHOT
                 self.speed = ARROW_SPEED * 0.7  # 70% de la velocidad normal
+                print(f"Ruta del sprite BIG SHOT: {sprite_path}")
             else:
                 sprite_path = os.path.join('assets', 'bullet', 'spark3.png')
                 
+            print(f"Intentando cargar sprite desde: {sprite_path}")
+            if not os.path.exists(sprite_path):
+                print(f"¡Error! No se encontró el archivo: {sprite_path}")
+                
             self._sprite = pygame.image.load(sprite_path).convert_alpha()
+            print(f"Sprite cargado correctamente. Tamaño original: {self._sprite.get_size()}")
             
             # Escalar el sprite a un tamaño apropiado
             if self.arrow_type == 'big_shot':
                 size = int(ARROW_SIZE * 1.5)  # Un poco más grande para el BIG SHOT
+                print(f"Escalando BIG SHOT a tamaño: {size*2}x{size*2}")
             else:
                 size = ARROW_SIZE
                 
@@ -73,11 +82,26 @@ class Arrow:
         
     def draw(self, surface: pygame.Surface) -> None:
         if self._sprite:
-            # Rotate the sprite based on direction
-            rotated_sprite = pygame.transform.rotate(self._sprite, self._angle)
-            # Get the rect centered on the arrow's position
-            sprite_rect = rotated_sprite.get_rect(center=(int(self.x), int(self.y)))
-            surface.blit(rotated_sprite, sprite_rect)
+            try:
+                # Rotate the sprite based on direction
+                rotated_sprite = pygame.transform.rotate(self._sprite, self._angle)
+                # Get the rect centered on the arrow's position
+                sprite_rect = rotated_sprite.get_rect(center=(int(self.x), int(self.y)))
+                surface.blit(rotated_sprite, sprite_rect)
+                
+                # Dibujar un rectángulo de colisión para depuración
+                if self.arrow_type == 'big_shot':
+                    pygame.draw.rect(surface, (255, 0, 0), self.rect(), 1)  # Rojo para BIG SHOT
+                else:
+                    pygame.draw.rect(surface, (0, 255, 0), self.rect(), 1)  # Verde para flechas normales
+                    
+            except Exception as e:
+                print(f"Error al dibujar flecha: {e}")
+                # Fallback a rectángulo si hay un error con el sprite
+                color = (255, 0, 0) if self.arrow_type == 'big_shot' else CYAN
+                pygame.draw.rect(surface, color, self.rect())
         else:
             # Fallback to rectangle if sprite loading failed
-            pygame.draw.rect(surface, CYAN, self.rect())
+            color = (255, 0, 0) if self.arrow_type == 'big_shot' else CYAN
+            pygame.draw.rect(surface, color, self.rect())
+            print(f"No hay sprite para flecha de tipo: {self.arrow_type}")
