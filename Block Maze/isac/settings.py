@@ -11,7 +11,7 @@ ENEMY_TYPES = {
     },
     'runner': {
         'hp': 2,
-        'speed_scale': 1.0,
+        'speed_scale': 1.5,  # Aumentado de 1.0 a 1.5 para hacerlo el más rápido
         'color': (255, 120, 120),
         'weight': 0.25,
     },

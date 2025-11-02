@@ -999,13 +999,7 @@ class PlayScene(Scene):
         # Slots de inventario (sin shake)
         self.draw_inventory_slots(surface)
 
-        # Mostrar estado de inventario (texto simple)
-        # ... (rest of the code remains the same)
-        inv_text = self.font.render(
-            f"Bombas: {self.inventory.bombs}  Llaves: {self.inventory.keys}  Flechas: {self.inventory.arrows}",
-            True, WHITE,
-        )
-        surface.blit(inv_text, (10, HEIGHT - 30))
+        # El texto del inventario ha sido eliminado para una interfaz más limpia
 
         # Indicador de escudo
         if self.player.shield:
