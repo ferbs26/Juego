@@ -28,7 +28,6 @@ MECÁNICAS DEL JUEGO
 - **Salud**: Se muestra en la esquina superior izquierda. Pierdes salud al ser golpeado por enemigos.
 - **Magia**: Se usa para activar el escudo. Se regenera con el tiempo.
 - **Disparo mejorado**: Algunos ítems te dan disparos más poderosos temporalmente.
-- **Invenario**: Presiona I para ver los objetos que has recolectado.
 
 CONSEJOS
 --------

@@ -1,0 +1,364 @@
+# Documentación Detallada del Juego: Block Maze
+
+## Estructura General del Proyecto
+
+### Explicación del Código de los Archivos Principales:
+
+1. **juego.py**
+   - **Función principal**: Inicializa el juego y comienza el bucle principal.
+   - **Código clave**:
+     - Importa Pygame y las clases necesarias del motor del juego.
+     - Crea una instancia de la clase `Game` con `MenuScene` como escena inicial.
+     - Inicia el bucle del juego llamando al método `run()`.
+   - **Flujo de ejecución**:
+     1. Inicializa Pygame.
+     2. Crea la ventana del juego.
+     3. Carga la escena del menú principal.
+     4. Inicia el bucle principal del juego.
+
+1. **juego.py**
+   - **Punto de entrada principal** del juego
+   - **Inicialización**: Configura Pygame y la ventana del juego
+   - **Flujo**: Carga la escena inicial (menú principal) y maneja el bucle principal del juego
+   - **Responsabilidades**:
+     - Inicialización de recursos
+     - Gestión del bucle principal
+     - Coordinación entre escenas
+
+2. **requirements.txt**
+   - **Propósito**: Especifica las dependencias del proyecto
+   - **Contenido**:
+     - `pygame>=2.5.0` - Biblioteca principal para el desarrollo de videojuegos
+   - **Uso**: Instala automáticamente las dependencias necesarias con `pip install -r requirements.txt`
+
+3. **options.json**
+   - **Propósito**: Almacena configuraciones del juego
+   - **Estructura típica**:
+     ```json
+     {
+         "resolution": {"width": 1280, "height": 720},
+         "audio": {"music_volume": 0.7, "sfx_volume": 0.8},
+         "controls": {"up": "w", "down": "s", "left": "a", "right": "d"},
+         "graphics": {"fullscreen": false, "vsync": true}
+     }
+     ```
+   - **Uso**: Se carga al inicio del juego para aplicar configuraciones guardadas
+
+4. **savegame.json**
+   - **Propósito**: Guarda el progreso del jugador
+   - **Estructura típica**:
+     ```json
+     {
+         "player": {
+             "level": 3,
+             "score": 4500,
+             "inventory": ["sword", "potion", "key"],
+             "health": 80,
+             "position": {"x": 120, "y": 200}
+         },
+         "levels_completed": [1, 2],
+         "settings": {"difficulty": "Normal"}
+     }
+     ```
+   - **Manejo**: Se actualiza automáticamente al progresar en el juego
+
+5. **create_shortcut.py**
+   - **Propósito**: Crea accesos directos en el escritorio
+   - **Funcionalidad**:
+     - Crea un acceso directo con los parámetros de ejecución correctos
+     - Establece el icono del juego
+     - Configura la ruta de trabajo
+   - **Uso**: Se ejecuta una vez durante la instalación
+
+6. **fix_shortcut.bat**
+   - **Propósito**: Soluciona problemas con accesos directos
+   - **Funciones**:
+     - Reconstruye rutas rotas
+     - Actualiza las referencias a los archivos del juego
+     - Restaura configuraciones predeterminadas
+   - **Uso**: Se ejecuta manualmente cuando hay problemas con los accesos directos
+
+7. **Block Maze.lnk**
+   - Acceso directo al ejecutable principal
+   - Configurado para ejecutar el juego con los parámetros óptimos
+
+8. **Guia y Ayuda.txt**
+   - Manual del jugador
+   - Controles del juego
+   - Mecánicas y objetivos
+   - Solución de problemas comunes
+
+9. **README.md**
+   - Descripción básica del proyecto
+   - Instrucciones de instalación
+   - Requisitos del sistema
+   - Créditos y licencia
+
+## Estructura del Código Fuente (isac/):
+
+1. **isac/__init__.py**
+   - Hace que el directorio sea un paquete Python
+   - Define las exportaciones principales del paquete
+
+2. **isac/settings.py**
+   - **Propósito**: Contiene toda la configuración global del juego
+   - **Secciones principales**:
+     - `ENEMY_TYPES`: Define tipos de enemigos con sus atributos (vida, velocidad, color)
+     - `DIFFICULTY_PRESETS`: Configuraciones predefinidas de dificultad
+     - Constantes de pantalla y renderizado
+     - Configuración de física y colisiones
+   - **Uso**: Se importa en todo el proyecto para acceder a configuraciones
+
+### Módulo Core (isac/core/)
+
+1. **game.py**
+   - **Clase Principal**: `Game`
+   - **Responsabilidades**:
+     - Inicialización de Pygame y la ventana del juego
+     - Gestión del bucle principal del juego (game loop)
+     - Manejo de cambios de escena
+   - **Métodos clave**:
+     - `__init__`: Configura la ventana y la escena inicial
+     - `change_scene`: Cambia entre escenas del juego
+     - `run`: Bucle principal del juego
+
+2. **scene.py**
+   - **Clase Principal**: `Scene` (clase base abstracta)
+   - **Propósito**: Sistema de gestión de escenas
+   - **Métodos que deben implementarse**:
+     - `handle_event`: Manejo de eventos de entrada
+     - `update`: Lógica de actualización del juego
+     - `draw`: Renderizado de la escena
+     - `start`: Inicialización de la escena
+     - `stop`: Limpieza al salir de la escena
+   
+3. **dungeon.py**
+   - **Clase Principal**: `Dungeon`
+   - **Funcionalidad**:
+     - Generación procedural de mazmorras
+     - Algoritmo de generación de habitaciones y pasillos
+     - Ubicación de enemigos y objetos
+   - **Características**:
+     - Generación aleatoria pero consistente
+     - Control de dificultad
+     - Conexión entre habitaciones
+
+4. **room.py**
+   - **Clase Principal**: `Room`
+   - **Responsabilidades**:
+     - Gestión de paredes y colisiones
+     - Contenido de la habitación (enemigos, objetos)
+     - Transiciones a otras habitaciones
+   - **Métodos clave**:
+     - `generate_content`: Rellena la habitación con objetos y enemigos
+     - `update`: Actualiza el estado de la habitación
+     - `draw`: Renderiza la habitación y su contenido
+   
+5. **inventory.py**
+   - **Clase Principal**: `Inventory`
+   - **Funcionalidad**:
+     - Almacenamiento de objetos del jugador
+     - Límite de capacidad
+     - Intercambio de objetos
+   - **Métodos principales**:
+     - `add_item`: Añade un objeto al inventario
+     - `remove_item`: Elimina un objeto
+     - `use_item`: Usa un objeto del inventario
+
+6. **map.py**
+   - **Clase Principal**: `GameMap`
+   - **Características**:
+     - Representación del nivel completo
+     - Sistema de descubrimiento de áreas
+     - Minimapa para navegación
+   - **Funcionalidades**:
+     - Actualización del mapa descubierto
+     - Renderizado del minimapa
+     - Navegación entre habitaciones
+
+### Módulo de Entidades (isac/entities/)
+
+1. **player.py**
+   - **Clase Principal**: `Player`
+   - **Atributos**:
+     - Estadísticas (vida, ataque, defensa)
+     - Inventario
+     - Estado actual
+   - **Métodos clave**:
+     - `update`: Actualiza la lógica del jugador
+     - `handle_input`: Procesa la entrada del usuario
+     - `take_damage`: Maneja el daño recibido
+     - `use_item`: Usa un objeto del inventario
+
+2. **enemies/**
+   - **Clase Base**: `Enemy`
+   - **Tipos implementados**:
+     - `Grunt`: Enemigo básico
+     - `Runner`: Enemigo rápido
+     - `Brute`: Enemigo resistente
+     - `Sniper`: Ataca a distancia
+     - `Ghost`: Atraviesa paredes
+   - **Comportamiento**:
+     - IA de persecución
+     - Patrones de ataque
+     - Reacción al daño
+
+3. **items/**
+   - **Clase Base**: `Item`
+   - **Categorías**:
+     - `Weapon`: Armas para atacar
+     - `Armor`: Equipamiento defensivo
+     - `Consumable`: Objetos de un solo uso
+     - `Key`: Para abrir puertas especiales
+
+### Módulo de Escenas (isac/scenes/)
+
+1. **menu.py**
+   - **Clase Principal**: `MenuScene`
+   - **Elementos**:
+     - Botón de Inicio
+     - Opciones
+     - Salir
+   - **Funcionalidad**:
+     - Navegación entre opciones
+     - Configuración inicial del juego
+
+2. **game_scene.py**
+   - **Clase Principal**: `GameScene`
+   - **Responsabilidades**:
+     - Gestión del mundo del juego
+     - Actualización de entidades
+     - Renderizado del juego
+   - **Componentes**:
+     - HUD (Heads-Up Display)
+     - Sistema de partículas
+     - Gestión de colisiones
+
+3. **game_over.py**
+   - **Clase Principal**: `GameOverScene`
+   - **Contenido**:
+     - Puntuación final
+     - Tiempo de juego
+     - Opciones de reinicio/salida
+
+4. **level_select.py**
+   - **Clase Principal**: `LevelSelectScene`
+   - **Características**:
+     - Muestra niveles disponibles
+     - Indicadores de progreso
+     - Dificultades seleccionables
+
+### Recursos del Juego (assets/)
+
+1. **images/**
+   - **sprites/**: Personajes jugables y enemigos
+   - **tilesets/**: Bloques de construcción de niveles
+   - **ui/**: Elementos de interfaz de usuario
+   - **effects/**: Efectos visuales y partículas
+
+2. **sounds/**
+   - **music/**: Bandas sonoras
+   - **sfx/**: Efectos de sonido
+   - **voice/**: Diálogos y voces
+
+3. **fonts/**
+   - Fuentes principales del juego
+   - Variantes de estilo y peso
+   - Soporte para múltiples idiomas
+
+## Mecánicas del Juego
+
+### Sistema de Combate
+- Combate basado en tiempo real
+- Diferentes tipos de ataque
+- Sistema de daño y resistencia
+- Efectos de estado (veneno, congelación, etc.)
+
+### Progresión
+- Sistema de niveles de personaje
+- Habilidades mejorables
+- Objetos desbloqueables
+- Logros y recompensas
+
+### IA de los Enemigos
+- Comportamientos únicos por tipo de enemigo
+- Patrones de movimiento
+- Detección del jugador
+- Trabajo en equipo entre enemigos
+
+## Requisitos del Sistema
+
+### Mínimos
+- **Sistema Operativo**: Windows 10 (64-bit)
+- **Procesador**: Intel Core i3 o equivalente
+- **Memoria**: 4 GB RAM
+- **Gráficos**: Tarjeta gráfica compatible con OpenGL 3.3+
+- **Almacenamiento**: 500 MB disponibles
+
+### Recomendados
+- **Sistema Operativo**: Windows 10/11 (64-bit)
+- **Procesador**: Intel Core i5 o superior
+- **Memoria**: 8 GB RAM
+- **Gráficos**: Tarjeta gráfica dedicada con 2GB VRAM
+- **Almacenamiento**: 1 GB disponibles (SSD recomendado)
+
+## Instalación
+
+1. **Requisitos previos**
+   - Python 3.8 o superior
+   - pip (gestor de paquetes de Python)
+
+2. **Instalación de dependencias**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Ejecución del juego**
+   ```bash
+   python juego.py
+   ```
+
+## Controles
+
+### Teclado
+- **WASD/Flechas**: Movimiento del personaje
+- **Espacio**: Acción principal (atacar/interactuar)
+- **E**: Usar objeto seleccionado
+- **I**: Abrir/cerrar inventario
+- **M**: Mostrar/ocultar mapa
+- **ESC**: Menú de pausa
+
+### Ratón
+- **Clic izquierdo**: Seleccionar/Confirmar
+- **Rueda del ratón**: Cambiar objeto seleccionado
+- **Clic derecho**: Acción secundaria
+
+## Solución de Problemas
+
+### Problemas Comunes
+1. **El juego no inicia**
+   - Verificar que todas las dependencias estén instaladas
+   - Asegurarse de tener los permisos necesarios
+
+2. **Rendimiento bajo**
+   - Reducir la resolución en options.json
+   - Cerrar otras aplicaciones
+   - Actualizar controladores de video
+
+3. **Errores de sonido**
+   - Verificar la configuración de audio del sistema
+   - Reiniciar el juego
+
+## Créditos
+
+### Desarrollo
+- [Nombre del Desarrollador]
+- [Colaboradores]
+
+### Recursos
+- [Fuente de recursos gráficos]
+- [Música y efectos de sonido]
+- [Bibliotecas de terceros]
+
+## Licencia
+[Incluir información sobre la licencia del juego]
