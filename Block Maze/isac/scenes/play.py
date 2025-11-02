@@ -554,37 +554,52 @@ class PlayScene(Scene):
 
     def _try_shoot(self) -> None:
         """Intenta disparar una flecha si es posible."""
-        if self.player.can_shoot():
-            dx = dy = 0
-            if self.player.facing == 'up':
-                dy = -1
-            elif self.player.facing == 'down':
-                dy = 1
-            elif self.player.facing == 'left':
-                dx = -1
-            elif self.player.facing == 'right':
-                dx = 1
-            if dx != 0 or dy != 0:
-                # Determinar el tipo de flecha según el estado del jugador
-                arrow_type = 'big_shot' if hasattr(self.player, 'big_shot_active') and self.player.big_shot_active else 'normal'
-                
-                # Crear la flecha con el tipo correspondiente
-                self.arrows.append(Arrow(
-                    self.player.rect.centerx, 
-                    self.player.rect.centery, 
-                    dx, 
-                    dy,
-                    arrow_type=arrow_type
-                ))
-                
-                # Iniciar cooldown de disparo
-                self.player.start_shoot_cooldown()
-                if self.snd_arrow_shoot:
-                    self.snd_arrow_shoot.play()
-                    # Mantenemos el sonido especial para disparos infinitos si se desea
-                    if self.player.infinite_shots and self.snd_pickup:
-                        self.snd_arrow_shoot.set_volume(0.7)
-                        self.snd_arrow_shoot.play()
+        if not self.player.can_shoot():
+            return
+            
+        dx = dy = 0
+        if self.player.facing == 'up':
+            dy = -1
+        elif self.player.facing == 'down':
+            dy = 1
+        elif self.player.facing == 'left':
+            dx = -1
+        elif self.player.facing == 'right':
+            dx = 1
+            
+        if dx == 0 and dy == 0:
+            return
+            
+        # Verificar si el BIG SHOT está activo
+        is_big_shot = getattr(self.player, 'big_shot_active', False)
+        arrow_type = 'big_shot' if is_big_shot else 'normal'
+        
+        print(f"[DEBUG] Disparando flecha. Tipo: {arrow_type}, big_shot_active: {is_big_shot}")
+        
+        # Crear la flecha con el tipo correspondiente
+        arrow = Arrow(
+            self.player.rect.centerx, 
+            self.player.rect.centery, 
+            dx, 
+            dy,
+            arrow_type=arrow_type
+        )
+        self.arrows.append(arrow)
+        
+        # Iniciar cooldown de disparo
+        self.player.start_shoot_cooldown()
+        
+        # Reproducir sonido de disparo
+        if self.snd_arrow_shoot:
+            # Ajustar volumen para BIG SHOT
+            volume = 0.7 if is_big_shot else 0.5
+            self.snd_arrow_shoot.set_volume(volume)
+            self.snd_arrow_shoot.play()
+            
+            # Sonido adicional para disparos infinitos
+            if self.player.infinite_shots and self.snd_pickup:
+                self.snd_pickup.set_volume(0.3)
+                self.snd_pickup.play()
 
     def _calculate_spawn_position(self, room) -> tuple[int, int]:
         """Calculate a valid spawn position for the player in the current room."""
@@ -1304,11 +1319,13 @@ class PlayScene(Scene):
                     self.player.magic = min(MAGIC_MAX, self.player.magic + 20)
                 elif p.kind == 'shield':
                     self.player.shield = True
-                    if not hasattr(self.player, 'big_shot_active'):
-                        self.player.big_shot_active = True
-                    print("¡BIG SHOT activado!")
                     if self.snd_pickup:
                         self.snd_pickup.play()
+                elif p.kind == 'big_shot':  # Handle BIG SHOT pickup
+                    self.player.activate_big_shot(7.0)  # Activate for 7 seconds
+                    if self.snd_pickup:
+                        self.snd_pickup.play()
+                    continue  # Skip adding back to remaining
                 
                 if self.snd_pickup:
                     self.snd_pickup.play()
@@ -1375,6 +1392,10 @@ class PlayScene(Scene):
                         # Crear el pickup de BIG SHOT
                         big_shot_pickup = Pickup('big_shot', chest.rect.centerx, chest.rect.centery - 30)
                         self.pickups.append(big_shot_pickup)
+                        print(f"¡Apareció un BIG SHOT en {chest.rect.centerx}, {chest.rect.centery - 30}!")
+                        if self.snd_pickup:
+                            self.snd_pickup.play()
+                        continue  # Skip the rest of the loop
                         print(f"¡Apareció un BIG SHOT en {chest.rect.centerx}, {chest.rect.centery - 30}!")
                 break
 

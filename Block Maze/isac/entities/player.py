@@ -58,16 +58,18 @@ class Player:
         if self.invuln > 0:
             self.invuln -= dt
             
-        # Reducir cooldown de disparo
-        if self.shoot_cooldown > 0:
-            cooldown_multiplier = 2.0 if self.big_shot_active else 1.0
-            self.shoot_cooldown = max(0, self.shoot_cooldown - (dt / cooldown_multiplier))
-            
         # Actualizar temporizador de BIG SHOT
         if self.big_shot_timer > 0:
             self.big_shot_timer -= dt
             if self.big_shot_timer <= 0:
                 self.big_shot_active = False
+                self.SHOOT_COOLDOWN_TIME = 0.3  # Restaurar cooldown normal
+                print("¡El efecto BIG SHOT ha terminado!")
+            
+        # Reducir cooldown de disparo
+        if self.shoot_cooldown > 0:
+            cooldown_multiplier = 3.0 if self.big_shot_active else 1.0
+            self.shoot_cooldown = max(0, self.shoot_cooldown - (dt * cooldown_multiplier))
             
         # Actualizar efectos temporales de botas
         if self.speed_boots_timer > 0:
@@ -250,10 +252,16 @@ class Player:
             # Fallback: dibujar rectángulo azul si no hay sprite
             pygame.draw.rect(surface, BLUE, self.rect)
 
-    def activate_big_shot(self, duration: float = 30.0) -> None:
-        """Activa el efecto BIG SHOT por la duración especificada"""
+    def activate_big_shot(self, duration: float = 7.0) -> None:
+        """Activa el efecto BIG SHOT por la duración especificada (7 segundos por defecto)"""
+        print(f"[DEBUG] Activando BIG SHOT por {duration} segundos")
         self.big_shot_active = True
         self.big_shot_timer = max(self.big_shot_timer, duration)  # Extender si ya está activo
+        print(f"¡BIG SHOT activado por {duration} segundos!")
+        # Hacer que el cooldown de disparo sea 3 veces más lento (aumentar el tiempo entre disparos)
+        self.SHOOT_COOLDOWN_TIME = 0.9  # 3 veces más lento que el normal (0.3 * 3 = 0.9)
+        print(f"[DEBUG] big_shot_active = {self.big_shot_active}, big_shot_timer = {self.big_shot_timer}")
+        print(f"[DEBUG] Cooldown de disparo ajustado a {self.SHOOT_COOLDOWN_TIME} segundos (3x más lento)")
         
     def take_damage(self, amount: int) -> None:
         if self.invuln <= 0 and not self.shield:
