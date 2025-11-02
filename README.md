@@ -3,7 +3,7 @@ IDENTIFICACIÓN:
 -Juan Manuel Ruiz (AZUL)
 -Lucas G. Badii (VIOLETA)
 -Renato “Walter” Castañeda (VERDE)
--Tiziano Savoini (AMARILLO)
+
 
 La propuesta:
 Nuestro proyecto, consiste en un juego, similar a los clásicos The Legend Of Zelda, consta de 8 niveles siendo 5 de estos los cuales priorizaremos, mientras que otros 3 serán objetivos secundarios los cuales solo serán creados si el tiempo y los recursos se encuentran a nuestro favor, el mismo va a ser exclusivamente de PC.
