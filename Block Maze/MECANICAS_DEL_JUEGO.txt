@@ -1,0 +1,97 @@
+MECÁNICAS DEL JUEGO
+==================
+
+CONTROLES
+---------
+- **WASD o Flechas de dirección**: Mover al personaje
+- **L**: Disparar flechas (mantener presionado para disparo continuo)
+- **J**: Ataque cuerpo a cuerpo
+- **K**: Activar escudo (mantener presionado, consume maná)
+- **B**: Lanzar bomba
+- **P**: Pausar/Reanudar el juego
+- **F5**: Guardar partida (experimental)
+- **F9**: Cargar partida guardada (experimental)
+- **ESC**: Salir al menú principal
+
+**En menús**:
+- **W/Flecha Arriba**: Mover selección hacia arriba
+- **S/Flecha Abajo**: Mover selección hacia abajo
+- **Enter/Espacio**: Confirmar selección
+
+PERSONAJE PRINCIPAL
+------------------
+- **Vida**: El jugador comienza con una cantidad base de vida que puede aumentar con mejoras.
+- **Maná**: Se usa para habilidades especiales como el escudo.
+- **Velocidad de movimiento**: Afecta qué tan rápido se mueve el personaje.
+- **Disparo**: El jugador puede disparar proyectiles en la dirección que mira.
+- **Escudo**: Protege al jugador de daño mientras está activo, pero consume maná.
+
+ENEMIGOS
+--------
+
+### 1. Grunt (Básico)
+- **Comportamiento**: Sigue al jugador directamente.
+- **Características**: Velocidad y daño estándar. Es el enemigo más común y básico.
+
+### 2. Runner (Corredor)
+- **Comportamiento**: Se mueve en zigzag hacia el jugador, siendo más difícil de golpear.
+- **Características**: Más rápido que el enemigo básico, pero con menos vida.
+- **Estrategia**: Su movimiento errático lo hace difícil de golpear, pero cae rápido cuando se le acierta.
+
+### 3. Brute (Bruto)
+- **Comportamiento**: Realiza cargas poderosas hacia el jugador
+- **Características**: Mayor vida y daño, pero más lento
+
+### 4. Sniper (Francotirador)
+- **Comportamiento**: Se mantiene a distancia y dispara proyectiles al jugador.
+- **Características**: Baja vida, pero ataca desde una distancia segura.
+- **Efecto visual**: Se enrojece cuando está a punto de disparar.
+
+### 5. Ghost (Fantasma)
+- **Comportamiento**: Puede atravesar paredes y obstáculos.
+- **Características**: Velocidad moderada y daño estándar.
+- **Apariencia**: Tiene un efecto de transparencia característico.
+
+### 6. Statue (Estatua)
+- **Comportamiento**: Se mueve hacia el jugador de manera constante.
+- **Características**: Velocidad lenta pero con mucha resistencia.
+- **Apariencia**: Parece una estatua animada.
+
+### 7. Monster (Monstruo)
+- **Comportamiento**: Dispara proyectiles en 8 direcciones simultáneamente.
+- **Características**: Alta vida y daño, patrones de ataque complejos.
+- **Estrategia**: Requiere moverse constantemente para evitar sus múltiples proyectiles.
+
+OBJETOS Y MEJORAS
+----------------
+### Cofres
+- Requieren una llave para abrirse.
+- Contienen uno de los siguientes objetos al azar:
+  - **Botas de velocidad**: Aumentan temporalmente la velocidad del jugador.
+  - **Compañero**: Un aliado que ayuda en combate.
+  - **Doble vida**: Aumenta la vida máxima del jugador.
+  - **BIG SHOT**: Mejora temporalmente los ataques.
+  - **Poción de maná**: Restaura maná al jugador.
+
+### Otros objetos
+- **Llaves**: Se usan para abrir cofres.
+- **Corazones**: Restauran vida al jugador.
+- **Maná**: Restaura maná al jugador.
+
+MECÁNICAS DE COMBATE
+------------------
+- **Disparo**: El jugador puede disparar en la dirección que mira.
+- **Esquive**: Moverse rápidamente para evitar ataques enemigos.
+- **Escudo**: Protege de daño pero consume maná.
+- **Daño por contacto**: Algunos enemigos hacen daño al tocar al jugador.
+- **Patrones de ataque**: Los enemigos tienen diferentes patrones de ataque que el jugador debe aprender a esquivar.
+
+CONSEJOS
+--------
+1. Administra tu maná para usar el escudo cuando sea realmente necesario.
+2. Prioriza eliminar a los enemigos a distancia primero.
+3. Explora el mapa para encontrar cofres y mejoras.
+4. Aprende los patrones de ataque de los enemigos para esquivarlos mejor.
+5. No te quedes sin movilidad, mantente en movimiento para evitar proyectiles enemigos.
+
+¡Diviértete jugando! Si tienes alguna pregunta sobre las mecánicas, no dudes en consultar este archivo.
