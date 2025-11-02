@@ -66,14 +66,14 @@ class Enemy:
                 (ENEMY_SIZE, ENEMY_SIZE)
             )
             self.sprites['runner'] = pygame.transform.scale(
-                pygame.image.load('assets/enemies/pale_oni.png').convert_alpha(), 
+                pygame.image.load('assets/enemies/golden_oni.png').convert_alpha(), 
                 (ENEMY_SIZE, ENEMY_SIZE)
             )
             
             # Cargar sprite para sniper
             try:
                 self.sprites['sniper'] = pygame.transform.scale(
-                    pygame.image.load('C:/Users/herna/OneDrive/Documentos/GitHub/Juego/VERSIONWALTHER/assets/enemies/snipper.png').convert_alpha(),
+                    pygame.image.load('C:\\Users\\herna\\OneDrive\\Documentos\\GitHub\\Juego\\Block Maze\\assets\\enemies\\snipper.png').convert_alpha(),
                     (ENEMY_SIZE, ENEMY_SIZE)
                 )
             except Exception as e:
