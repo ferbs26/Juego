@@ -13,6 +13,7 @@ class Arrow:
     dy: int  # -1, 0, 1
     arrow_type: str = 'normal'  # 'normal' o 'big_shot'
     damage: int = ARROW_DAMAGE
+    damage_multiplier: float = 1.0  # Multiplicador de daño basado en el personaje
     speed: float = ARROW_SPEED
     alive: bool = True
     _sprite: Optional[pygame.Surface] = field(init=False, default=None)
@@ -60,6 +61,10 @@ class Arrow:
             print(f"Error loading arrow sprite: {e}")
             self._sprite = None
             
+    def get_damage(self) -> int:
+        """Get the final damage considering the damage multiplier."""
+        return int(self.damage * self.damage_multiplier)
+
     def _calculate_angle(self) -> float:
         """Calculate the rotation angle based on direction vector."""
         if self.dx == 0 and self.dy == -1:  # Up

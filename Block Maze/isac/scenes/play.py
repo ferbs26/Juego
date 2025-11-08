@@ -1,6 +1,7 @@
 import os
 import random
 import math
+import time
 import pygame
 
 from isac.core.scene import Scene
@@ -54,7 +55,7 @@ from isac.entities.health_doubler import HealthDoubler
 
 
 class PlayScene(Scene):
-    def __init__(self, game: "Game") -> None:
+    def __init__(self, game: "Game", character_type: str = "crystal") -> None:
         super().__init__(game)
         # Initialize dungeon first
         self.dungeon = Dungeon()
@@ -66,8 +67,26 @@ class PlayScene(Scene):
         current_room = self.dungeon.get_room()
         spawn_x, spawn_y = self._calculate_spawn_position(current_room)
         
-        # Create player at the valid spawn position
-        self.player = Player(spawn_x, spawn_y)
+        # Get character data
+        from isac.characters import get_character
+        character_data = get_character(character_type)
+        character_type_name = character_type if character_data else 'crystal'
+        
+        # Create player with the selected character type
+        self.player = Player(spawn_x, spawn_y, character_type=character_type_name)
+        
+        # Apply character-specific effects
+        if character_type_name == 'glass':
+            # Make Glass semi-transparent to indicate fragility
+            for direction in self.player.sprites:
+                if isinstance(self.player.sprites[direction], list):
+                    for i in range(len(self.player.sprites[direction])):
+                        if isinstance(self.player.sprites[direction][i], pygame.Surface):
+                            self.player.sprites[direction][i] = self.player.sprites[direction][i].copy()
+                            self.player.sprites[direction][i].set_alpha(180)  # Semi-transparent
+                elif isinstance(self.player.sprites[direction], pygame.Surface):
+                    self.player.sprites[direction] = self.player.sprites[direction].copy()
+                    self.player.sprites[direction].set_alpha(180)  # Semi-transparent
         self.enemies: list[Enemy] = []
         self.score = 0  # Initialize score counter
         self.font = pygame.font.SysFont(None, 24)
@@ -553,36 +572,57 @@ class PlayScene(Scene):
                 self.player.set_shooting(False)
 
     def _try_shoot(self) -> None:
-        """Intenta disparar una flecha si es posible."""
+        """Intenta disparar una flecha si el jugador puede hacerlo."""
+        # Verificar si el jugador puede disparar
         if not self.player.can_shoot():
-            return
-            
-        dx = dy = 0
-        if self.player.facing == 'up':
-            dy = -1
-        elif self.player.facing == 'down':
-            dy = 1
-        elif self.player.facing == 'left':
-            dx = -1
-        elif self.player.facing == 'right':
-            dx = 1
-            
-        if dx == 0 and dy == 0:
             return
             
         # Verificar si el BIG SHOT está activo
         is_big_shot = getattr(self.player, 'big_shot_active', False)
         arrow_type = 'big_shot' if is_big_shot else 'normal'
         
-        print(f"[DEBUG] Disparando flecha. Tipo: {arrow_type}, big_shot_active: {is_big_shot}")
+        # Obtener el multiplicador de daño del jugador
+        damage_multiplier = getattr(self.player, 'damage_multiplier', 1.0)
         
-        # Crear la flecha con el tipo correspondiente
+        # Obtener dirección del disparo basada en la última tecla de dirección presionada
+        keys = pygame.key.get_pressed()
+        
+        # Determinar dirección del disparo
+        dx, dy = 0, 0
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            dy = -1
+            self.player.facing = 'up'
+        elif keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            dy = 1
+            self.player.facing = 'down'
+        elif keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            dx = -1
+            self.player.facing = 'left'
+        elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            dx = 1
+            self.player.facing = 'right'
+        else:
+            # Si no hay dirección, usar la dirección actual del personaje
+            if self.player.facing == 'up':
+                dy = -1
+            elif self.player.facing == 'down':
+                dy = 1
+            elif self.player.facing == 'left':
+                dx = -1
+            elif self.player.facing == 'right':
+                dx = 1
+        
+        if dx == 0 and dy == 0:
+            return  # No hay dirección válida para disparar
+        
+        # Crear la flecha
         arrow = Arrow(
             self.player.rect.centerx, 
             self.player.rect.centery, 
             dx, 
             dy,
-            arrow_type=arrow_type
+            arrow_type=arrow_type,
+            damage_multiplier=damage_multiplier
         )
         self.arrows.append(arrow)
         
@@ -595,12 +635,7 @@ class PlayScene(Scene):
             volume = 0.7 if is_big_shot else 0.5
             self.snd_arrow_shoot.set_volume(volume)
             self.snd_arrow_shoot.play()
-            
-            # Sonido adicional para disparos infinitos
-            if self.player.infinite_shots and self.snd_pickup:
-                self.snd_pickup.set_volume(0.3)
-                self.snd_pickup.play()
-
+    
     def _calculate_spawn_position(self, room) -> tuple[int, int]:
         """Calculate a valid spawn position for the player in the current room."""
         # Get the room map and find a valid spawn position
@@ -621,6 +656,11 @@ class PlayScene(Scene):
         y = p + 10 + (cell_y * cell_height) + (cell_height // 2)
         
         return int(x), int(y)
+        
+        # Sonido adicional para disparos infinitos
+        if self.player.infinite_shots and self.snd_pickup:
+            self.snd_pickup.set_volume(0.3)
+            self.snd_pickup.play()
 
     def update(self, dt: float) -> None:
         if self.paused:
@@ -689,8 +729,8 @@ class PlayScene(Scene):
                         e.alive = False
                         print("¡BIG SHOT eliminó al enemigo al instante!")
                     else:
-                        # Daño normal para flechas estándar
-                        died, points = e.take_damage(a.damage)
+                        # Daño normal para flechas estándar, aplicando el multiplicador
+                        died, points = e.take_damage(a.get_damage())
                         if died:
                             self.score += points
                     if self.snd_arrow_hit:
