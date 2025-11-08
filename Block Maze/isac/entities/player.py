@@ -3,32 +3,39 @@ import math
 from isac.settings import (
     BLUE,
     PLAYER_SIZE,
-    PLAYER_SPEED,
     PLAYER_MAX_HP,
-    PLAYER_INVULN_TIME,
+    PLAYER_SPEED,
     MAGIC_MAX,
+    PLAYER_INVULN_TIME,
     MAGIC_REGEN,
     MELEE_COOLDOWN,
     MELEE_RANGE,
 )
+from isac.characters import get_character, load_character_sprites
 
 
 class Player:
-    def __init__(self, x: int, y: int, speed: int = PLAYER_SPEED) -> None:
+    def __init__(self, x: int, y: int, speed: int = PLAYER_SPEED, character_type: str = "crystal") -> None:
         self.rect = pygame.Rect(0, 0, PLAYER_SIZE, PLAYER_SIZE)
         self.rect.center = (x, y)
         self.speed = speed
-        self.speed_multiplier = 1.0  # Para efectos de velocidad
+        
+        # Cargar datos del personaje
+        self.character_data = get_character(character_type)
+        self.max_hp = self.character_data.max_hp
+        self.hp = self.max_hp
+        self.speed_multiplier = self.character_data.speed_multiplier
+        self.damage_multiplier = getattr(self.character_data, 'damage_multiplier', 1.0)
+        self.character_type = character_type  # Almacenar el tipo de personaje
         
         # Efectos visuales temporales
         self.speed_boots_timer = 0.0
         self.speed_boots_glow_timer = 0.0
         self.big_shot_timer = 0.0
         self.big_shot_active = False
-        self.max_hp = PLAYER_MAX_HP
-        self.hp = self.max_hp
         self.invuln = 0.0  # tiempo restante de invulnerabilidad
-        # Estado Zelda-like
+        
+        # Estado del jugador
         self.facing = "down"  # 'up','down','left','right'
         self.magic = float(MAGIC_MAX)
         self.melee_cd = 0.0
@@ -37,17 +44,44 @@ class Player:
         self._prev_center = self.rect.center
         
         # Inicializar sistema de sprites
-        self.sprites = {}
-        self.current_sprite = None
-        self.cargar_sprites()
+        self.sprites = load_character_sprites(self.character_data, (PLAYER_SIZE, PLAYER_SIZE))
+        self.current_sprite = self.sprites.get('down', [None])[0] if self.sprites.get('down') else None
         
         # Disparo infinito (desactivado por defecto)
         self.infinite_shots = False
         
         # Control de velocidad de disparo
-        self.shoot_cooldown = 0.0
-        self.SHOOT_COOLDOWN_TIME = 0.3  # segundos entre disparos
-        self.wants_to_shoot = False  # Indica si el jugador está manteniendo presionado el botón de disparo
+        self.shoot_cooldown = 0
+        self.shoot_delay = 0.2  # segundos entre disparos (valor base)
+        self.last_shot_time = 0
+        
+        # Control de disparo continuo
+        self.wants_to_shoot = False
+        
+        # Aplicar efectos visuales específicos del personaje
+        if character_type == 'glass':
+            self._apply_glass_effects()
+    
+    def set_shooting(self, shooting: bool) -> None:
+        """Establece si el jugador quiere disparar.
+        
+        Args:
+            shooting: True si el jugador quiere disparar, False en caso contrario
+        """
+        self.wants_to_shoot = shooting
+        
+    def _apply_glass_effects(self):
+        """Aplica efectos visuales específicos para el personaje Glass."""
+        # Hacer a Glass semi-transparente
+        for direction in self.sprites:
+            if direction in ['up', 'down', 'left', 'right']:
+                for i in range(len(self.sprites[direction])):
+                    if isinstance(self.sprites[direction][i], pygame.Surface):
+                        self.sprites[direction][i] = self.sprites[direction][i].copy()
+                        self.sprites[direction][i].set_alpha(180)  # Semi-transparente
+            elif self.sprites[direction] is not None:
+                self.sprites[direction] = self.sprites[direction].copy()
+                self.sprites[direction].set_alpha(180)
 
     def update(self, dt: float, walls: list, obstacles: list) -> None:
         # Reducir cooldowns
@@ -122,54 +156,48 @@ class Player:
         self.actualizar_sprite()
 
     def cargar_sprites(self):
-        """Carga los sprites del jugador."""
-        try:
-            # Cargar sprites direccionales del cristal
-            self.sprites['up'] = pygame.transform.scale(
-                pygame.image.load('assets/player/CRISTAL_ARRIBA.png').convert_alpha(),
-                (PLAYER_SIZE, PLAYER_SIZE)
-            )
-            self.sprites['down'] = pygame.transform.scale(
-                pygame.image.load('assets/player/CRISTAL_ABAJO.png').convert_alpha(),
-                (PLAYER_SIZE, PLAYER_SIZE)
-            )
-            self.sprites['left'] = pygame.transform.scale(
-                pygame.image.load('assets/player/CRISTAL_IZQUIERDA.png').convert_alpha(),
-                (PLAYER_SIZE, PLAYER_SIZE)
-            )
-            self.sprites['right'] = pygame.transform.scale(
-                pygame.image.load('assets/player/CRISTAL_DERECHA.png').convert_alpha(),
-                (PLAYER_SIZE, PLAYER_SIZE)
-            )
-            # Sprite especial para cuando está feliz/con efectos
-            self.sprites['happy'] = pygame.transform.scale(
-                pygame.image.load('assets/player/CRYSTAL_FELIZ.png').convert_alpha(),
-                (PLAYER_SIZE, PLAYER_SIZE)
-            )
-            # Sprite base
-            self.sprites['default'] = pygame.transform.scale(
-                pygame.image.load('assets/player/CRISTAL.png').convert_alpha(),
-                (PLAYER_SIZE, PLAYER_SIZE)
-            )
-            
-            # Establecer sprite inicial
-            self.current_sprite = self.sprites['down']
-            
-        except pygame.error as e:
-            print(f"Error al cargar sprites del jugador: {e}")
-            self.current_sprite = None
+        """Carga los sprites del personaje actual."""
+        # Los sprites ya se cargaron en el __init__
+        pass
     
     def actualizar_sprite(self):
         """Actualiza el sprite actual según el estado del jugador."""
         if not self.sprites:
             return
             
-        # Si tiene botas de velocidad, usar sprite feliz
-        if self.speed_boots_timer > 0:
-            self.current_sprite = self.sprites.get('happy', self.current_sprite)
-        else:
-            # Usar sprite según dirección
-            self.current_sprite = self.sprites.get(self.facing, self.sprites.get('default', self.current_sprite))
+        # Obtener el sprite apropiado según el estado
+        sprite = None
+        
+        # 1. Verificar si debe mostrarse el sprite 'happy' (efecto de botas)
+        if self.speed_boots_timer > 0 and 'happy' in self.sprites and self.sprites['happy'] is not None:
+            sprite = self.sprites['happy']
+        
+        # 2. Si no hay sprite 'happy' o no está activo, usar el de la dirección actual
+        if not sprite:
+            # Para el personaje Crystal, que usa sprites de dirección
+            if self.facing in self.sprites and self.sprites[self.facing]:
+                sprite = self.sprites[self.facing][0]  # Tomar el primer frame de la animación
+            
+            # Si no hay sprite para la dirección actual, usar el default
+            if not sprite and 'default' in self.sprites and self.sprites['default'] is not None:
+                sprite = self.sprites['default']
+        
+        # 3. Si aún no hay sprite, intentar con cualquier sprite disponible
+        if not sprite:
+            for key in ['down', 'right', 'left', 'up']:  # Orden de preferencia
+                if key in self.sprites and self.sprites[key] and isinstance(self.sprites[key], list) and self.sprites[key]:
+                    sprite = self.sprites[key][0]
+                    break
+        
+        # 4. Si todo falla, crear un sprite de emergencia rojo
+        if not sprite:
+            print("Advertencia: No se pudo cargar ningún sprite, usando sprite de emergencia")
+            surf = pygame.Surface((PLAYER_SIZE, PLAYER_SIZE), pygame.SRCALPHA)
+            surf.fill((255, 0, 0, 128))  # Rojo semitransparente
+            sprite = surf
+        
+        # Actualizar el sprite actual
+        self.current_sprite = sprite
 
     def apply_speed_boots(self, multiplier: float):
         """Aplica el efecto temporal de las botas de velocidad"""
@@ -303,7 +331,7 @@ class Player:
         
     def start_shoot_cooldown(self) -> None:
         """Inicia el cooldown de disparo."""
-        self.shoot_cooldown = self.SHOOT_COOLDOWN_TIME
+        self.shoot_cooldown = self.shoot_delay
         
     def set_shooting(self, shooting: bool) -> None:
         """Establece si el jugador está intentando disparar."""

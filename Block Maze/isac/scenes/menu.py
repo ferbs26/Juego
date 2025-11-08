@@ -9,13 +9,14 @@ class MenuScene(Scene):
         super().__init__(game)
         self.font = pygame.font.SysFont(None, 48)
         self.small = pygame.font.SysFont(None, 28)
+        self.title_font = pygame.font.SysFont(None, 64)
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                # Import local para evitar import circular
-                from .play import PlayScene
-                self.game.change_scene(PlayScene)
+                # Go to character selection screen
+                from .character_select import CharacterSelectScene
+                self.game.change_scene(CharacterSelectScene)
             elif event.key == pygame.K_ESCAPE:
                 self.game.running = False
 
@@ -23,7 +24,10 @@ class MenuScene(Scene):
         pass
 
     def draw(self, surface: pygame.Surface) -> None:
-        title = self.font.render("Block Maze", True, WHITE)
+        title = self.title_font.render("Block Maze", True, WHITE)
         hint = self.small.render("Enter/Espacio: Jugar  |  Esc: Salir", True, BLUE)
-        surface.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 2 - 60))
-        surface.blit(hint, (WIDTH // 2 - hint.get_width() // 2, HEIGHT // 2 + 10))
+        subtitle = self.small.render("Un juego de aventuras y mazmorras", True, BLUE)
+        
+        surface.blit(title, (WIDTH // 2 - title.get_width() // 2, HEIGHT // 3))
+        surface.blit(subtitle, (WIDTH // 2 - subtitle.get_width() // 2, HEIGHT // 2 - 30))
+        surface.blit(hint, (WIDTH // 2 - hint.get_width() // 2, HEIGHT * 2 // 3))
